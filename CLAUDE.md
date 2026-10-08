@@ -13,7 +13,7 @@ Proyecto del taller evaluativo "Ritmo Claro API" (módulos 2 y 3). El enunciado 
    - `DATABASE_URL` y `JWT_SECRET` quedan fuera del código y del repositorio.
    - Las respuestas de error no exponen contraseñas, secretos, stack traces ni detalles internos.
 4. **Trabajar solo la parte pedida**; no adelantar las siguientes.
-5. **Al terminar cada parte**: verificar que compila (`npm run build` cuando exista) y hacer un solo commit con el mensaje `feat(parte-N): <resumen>`. No hacer push salvo petición expresa.
+5. **Al terminar cada parte**: verificar que compila (`npm run build` cuando exista) y hacer un solo commit con el mensaje `feat(parte-N): <resumen>`. Después del commit, confirmar con `git ls-files` que no se suben `.env` ni `docs/taller.pdf` y hacer push de `main` a `origin` (https://github.com/Twenbe/ritmo_claro_api.git).
 6. **Nunca** escribir en archivos, commits ni en el chat valores reales de `.env`, tokens o contraseñas reales. El archivo `.env` lo crea el usuario.
 7. **Después del commit**, explicar en español y sin relleno: archivos tocados y responsabilidad de cada uno, cómo fluye la lógica, cómo probarlo manualmente y qué preguntas de la sustentación (página 19) quedan respondidas con esa parte.
 8. **Mantener `docs/uso-ia.md`** con una entrada por parte: fecha, prompt recibido y resumen de lo generado.
