@@ -220,3 +220,56 @@ Commit al final.
   - en la base solo hay hashes `$2b$10$` de 60 caracteres;
   - con `JWT_SECRET` vacía la app no arranca ("Falta la variable de entorno JWT_SECRET").
 - Los usuarios de prueba se eliminaron de la base local al terminar.
+
+---
+
+## Parte 5 — CRUD de hábitos
+
+**Fecha:** 2026-10-08
+
+**Prompt:**
+
+```text
+Trabaja solo en Modulo_3/ritmo_claro_api: lee primero su CLAUDE.md y ejecuta todos los comandos dentro de esa carpeta.
+
+Parte 5 del taller, según CLAUDE.md y docs/taller.pdf.
+
+1. crear-habito.dto.ts con nombre, descripcion opcional, estado opcional y frecuencia opcional, usando los enums del cliente generado. actualizar-habito.dto.ts con PartialType de @nestjs/swagger. Ninguno acepta id, usuarioId ni creadoEn.
+2. Protege todo HabitosController con JwtAuthGuard y obtén el usuario con @UsuarioActual().
+3. Implementa POST /habitos (201, dueño tomado del token), GET /habitos (solo los propios), GET /habitos/:id, PATCH /habitos/:id (solo los campos enviados) y DELETE /habitos/:id (204). Valida :id con ParseUUIDPipe.
+4. Por ahora el id inexistente responde 404. La verificación de propiedad con 403 va en la Parte 6.
+5. Un PATCH con body vacío responde 400 con "Envía al menos un campo para actualizar", antes de consultar la base, según D-10.
+6. Todas las consultas Prisma van en HabitosService. El controller solo maneja HTTP y nunca incluye datos del usuario dueño en la respuesta.
+7. Prueba con curl la secuencia completa: sin token (401), token alterado (401), crear, listar, consultar, PATCH de un solo campo verificando que los demás se conservan, PATCH vacío (400), id con formato inválido (400), eliminar y volver a consultar (404). Confirma los defaults de estado y frecuencia. Muéstrame los status.
+
+Commit al final.
+```
+
+**Resumen de lo generado:**
+
+- Referencias: las guías `Clase3_Modulo2`, `clase4M2` y `Repaso-Finanzas-API-SPA`, y `Clase3/finanzas-api`. Diferencias:
+  - `PartialType` de `@nestjs/swagger` en lugar de `@nestjs/mapped-types`.
+  - `DELETE` con 204 (D-03) en lugar de 200.
+  - Campos copiados uno a uno en lugar de `data: dto`: sin whitelist, el body completo llegaría a Prisma.
+  - Verificación de existencia antes de `update` y `delete` (404) en lugar de dejar que `P2025` dé 500.
+  - Se detectó un bug en la guía `clase4M2`: el `remove` de categorías borra en el modelo `transaccion`.
+- `CrearHabitoDto` (nombre, y opcionales descripcion, estado y frecuencia, con `IsEnum` sobre los enums del cliente generado) y `ActualizarHabitoDto` (`PartialType`). Ninguno declara `id`, `usuarioId` ni `creadoEn`.
+- `HabitosService` concentra todas las consultas Prisma:
+  - Un `select` fijo (`CAMPOS_HABITO`) que nunca incluye datos del usuario dueño.
+  - `crear` toma el dueño del token y copia los campos permitidos uno a uno.
+  - `listarPropios` filtra por `usuarioId`.
+  - `obtenerUno` responde 404 si el id no existe.
+  - `actualizar` responde 400 con D-10 antes de consultar la base; también cubre el body `undefined` de Express 5 y un body que solo trae campos no permitidos. Luego verifica existencia y actualiza solo los campos definidos.
+  - `eliminar` verifica existencia y borra físicamente.
+- `HabitosController`: `@UseGuards(JwtAuthGuard)` a nivel de clase, `@UsuarioActual()`, `ParseUUIDPipe` en `:id` y `@HttpCode(204)` en `DELETE`. No consulta Prisma.
+- Pruebas con curl (puerto de prueba 3999), sin errores 500 en el log:
+  - sin token → 401; token alterado → 401;
+  - POST → 201 con `estado: ACTIVO` y `frecuencia: DIARIA` por defecto y `usuarioId` igual al `sub`;
+  - POST con un `usuarioId` falso → se ignora y se usa el del token;
+  - GET lista → 200 solo con hábitos propios; GET por id → 200;
+  - PATCH de `estado` → 200 y los demás campos se conservan;
+  - PATCH `{}`, sin body o solo con `usuarioId` → 400;
+  - `/habitos/abc` → 400; UUID inexistente → 404;
+  - DELETE → 204 sin cuerpo, y la consulta posterior → 404.
+- Hueco documentado hasta la Parte 6: un segundo usuario obtiene 200 al leer por id un hábito ajeno; su listado sí está aislado.
+- Los usuarios de prueba (y sus hábitos, por cascada) se eliminaron de la base local.
