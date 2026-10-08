@@ -1,0 +1,13 @@
+# Enunciado del taller (no se publica)
+docs/taller.pdf
+
+# Secretos
+.env
+
+# Dependencias y compilados
+node_modules
+dist
+
+# Logs
+logs
+*.log
