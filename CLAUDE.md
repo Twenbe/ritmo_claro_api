@@ -19,14 +19,18 @@ Proyecto del taller evaluativo "Ritmo Claro API" (módulos 2 y 3). El enunciado 
 8. **Mantener `docs/uso-ia.md`** con una entrada por parte: fecha, prompt recibido y resumen de lo generado.
 9. **Antes de implementar cada parte**, consultar la guía de clase correspondiente y los proyectos de clase del espacio de trabajo que están fuera de `Modulo_3/ritmo_claro_api` (incluidas las clases 1 a 4 del módulo 3). Usarlos solo como referencia, sin modificarlos. Seguir sus convenciones (configuración de Prisma 7, estructura de auth, guards, filtro de errores, Dockerfile) siempre que no contradigan el taller. Las guías tienen algunos errores: si algo no funciona o contradice el taller o la documentación oficial, avisar y explicar la diferencia en vez de copiarlo. No copiar el contenido de las guías al repositorio.
 
-   Guía por parte:
+   Guía por parte (ver más abajo).
+10. **Commits con archivos explícitos.** Agregar al commit solo los archivos tocados en la parte (`git add <rutas>`), nunca `git add -A` ni `git add .`. Si hay archivos nuevos en `docs/evidencias/`, antes del commit mostrar la lista al usuario y preguntar si se incluyen; solo se agregan los que confirme después de revisarlos.
+
+## Guías de clase por parte (regla 9)
+
    - Parte 2: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/M2-C1-spa.html
-   - Parte 3: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/clase-02-modelado-prisma-postgresql-v2.html
-   - Parte 4: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/M3/Clase1/M3C1-autenticacion-registro-jwt.html
-   - Parte 5: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/Clase3_Modulo2.html, https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/clase4M2.html y https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/Repaso-Finanzas-API-SPA.html
-   - Parte 6: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/M3/Clase2/DevSenior_M3C2_RBAC.html
-   - Partes 7 y 8: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/M3/Clase3/index.html
-   - Partes 9 y 10: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/M3/Clase4/M3C4-deploy-docker-produccion.html
+- Parte 3: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/clase-02-modelado-prisma-postgresql-v2.html
+- Parte 4: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/M3/Clase1/M3C1-autenticacion-registro-jwt.html
+- Parte 5: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/Clase3_Modulo2.html, https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/clase4M2.html y https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/Repaso-Finanzas-API-SPA.html
+- Parte 6: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/M3/Clase2/DevSenior_M3C2_RBAC.html
+- Partes 7 y 8: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/M3/Clase3/index.html
+- Partes 9 y 10: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/M3/Clase4/M3C4-deploy-docker-produccion.html
 
 ## Referencias del proyecto
 
