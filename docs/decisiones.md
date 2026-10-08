@@ -4,7 +4,7 @@ Registro de decisiones del proyecto Ritmo Claro API. Cada decisión indica qué 
 
 ## D-01. Un id inexistente responde 404
 
-**Decisión.** `GET`, `PATCH` y `DELETE` sobre `/habitos/:id` responden `404` cuando no existe ningún hábito con ese id, sin importar quién haga la petición.
+**Decisión.** `GET`, `PATCH` y `DELETE` sobre `/habitos/:id` responden `404` cuando el id es un UUID válido pero no existe ningún hábito con él, sin importar quién haga la petición. Un id que no es UUID responde `400` (ver D-09).
 
 **Justificación.** El contrato reserva `404` para "el recurso no existe". La existencia se evalúa antes que la propiedad: si no hay hábito, no hay dueño contra el cual comparar.
 
@@ -44,16 +44,44 @@ Registro de decisiones del proyecto Ritmo Claro API. Cada decisión indica qué 
 
 **Justificación.** Ignorar en silencio un `rol: ADMIN` o un `usuarioId` ajeno esconde el intento y deja al cliente creyendo que el campo se aplicó. Rechazarlo hace visible el error de integración y deja una evidencia comprobable de que "ninguna entrada permite elegir rol o usuarioId". La identidad del dueño sale siempre del JWT.
 
-**Comprobación.** CA-REG-05, CA-CRUD-09 y HU-03.
+**Comprobación.** CA-REG-07, CA-CRUD-09 y HU-03.
 
-## Puntos abiertos
+## D-06. El login exitoso responde 200
 
-El contrato no los fija. Se resuelven en la parte indicada y se registran aquí como decisión cuando se tomen.
+**Decisión.** `POST /auth/login` con credenciales válidas responde `200` con `access_token`.
 
-| Punto | Propuesta | Parte |
-|-------|-----------|-------|
-| Código de éxito del login (`200` o `201`). | `200`: el login no crea un recurso. | 4 |
-| ¿El email distingue mayúsculas? (`Ana@x.com` frente a `ana@x.com`). | Normalizar a minúsculas antes de guardar y de comparar, para evitar los correos duplicados que describe el caso. | 4 |
-| Valor inicial de `frecuencia` y si es obligatoria al crear. | `estado` inicia en `ACTIVO`. Para `frecuencia`, decidir entre obligatoria o valor inicial `DIARIA`. | 3 y 5 |
-| Tipo de id y respuesta ante un id con formato inválido (por ejemplo `/habitos/abc`). | Si el id es numérico o UUID, un formato inválido responde `400`, no `404`. | 3 y 5 |
-| `PATCH` con body vacío. | Responder `400` o devolver el hábito sin cambios. | 5 |
+**Justificación.** El login no crea un recurso: verifica credenciales y emite un token. `201 Created` sería engañoso para el cliente.
+
+**Comprobación.** CA-LOG-01 y CA-LOG-02.
+
+## D-07. El email no distingue mayúsculas
+
+**Decisión.** En el registro y en el login, el email se normaliza con `trim` y minúsculas antes de guardarlo o compararlo. `Ana@Ejemplo.com ` y `ana@ejemplo.com` son la misma cuenta.
+
+**Justificación.** El caso describe "correos duplicados" como uno de los problemas actuales. Sin normalizar, la restricción de email único dejaría pasar la misma dirección escrita con otras mayúsculas o con espacios, y una persona podría no lograr iniciar sesión por cómo escribió su correo.
+
+**Comprobación.** CA-REG-03, CA-REG-05 y CA-LOG-02.
+
+## D-08. Valores iniciales: estado ACTIVO y frecuencia DIARIA
+
+**Decisión.** Un hábito nuevo nace con `estado: ACTIVO`. Si no se envía `frecuencia` al crearlo, toma el valor `DIARIA`. Ambos valores iniciales se definen en el modelo de datos.
+
+**Justificación.** Un hábito recién creado está en uso, así que `ACTIVO` es su estado natural. `DIARIA` es la frecuencia más común en los ejemplos del caso (leer, pausas activas, meditar) y permite crear un hábito enviando solo el nombre. Definirlos en el modelo garantiza el mismo valor aunque cambie la capa HTTP.
+
+**Comprobación.** CA-CRUD-01.
+
+## D-09. Un id sin formato UUID responde 400
+
+**Decisión.** El id de `Habito` es un UUID. En `/habitos/:id`, un id que no tiene formato UUID responde `400` (validado con `ParseUUIDPipe` antes de llegar al service). Un UUID válido que no existe responde `404` (D-01).
+
+**Justificación.** Un valor que ni siquiera tiene la forma de un id es una entrada inválida, no un recurso ausente, y el contrato asigna `400` a los datos inválidos. Rechazarlo en la capa HTTP evita una consulta innecesaria a la base y un posible error interno de Prisma ante un formato inesperado.
+
+**Comprobación.** CA-CRUD-10 y CA-CRUD-11.
+
+## D-10. Un PATCH con body vacío responde 400
+
+**Decisión.** `PATCH /habitos/:id` con un body sin campos responde `400` con el mensaje `"Envía al menos un campo para actualizar"`. Se evalúa como validación de la entrada, es decir, antes de la existencia y de la propiedad (orden de D-02).
+
+**Justificación.** Un PATCH vacío no expresa ningún cambio. Responder `200` haría creer al cliente que actualizó algo, cuando lo más probable es un error de integración. El mensaje explícito le dice qué corregir.
+
+**Comprobación.** CA-CRUD-12.

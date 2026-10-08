@@ -40,3 +40,47 @@ Commit al final.
 - `README.md` con el problema, los actores y el valor del MVP en dos párrafos; 16 historias de usuario (5 de visitante, 7 de USUARIO, 3 de ADMIN y 1 sin token); la matriz de los ocho endpoints con acceso, actor, resultado y rechazos; el contrato de error, y criterios de aceptación positivos y negativos para registro, login, CRUD, propiedad y rol.
 - `docs/decisiones.md` con las cinco decisiones pedidas (D-01 a D-05), cada una con justificación y criterio de comprobación, el orden de evaluación 401 → 400 → 404 → 403, y una tabla de puntos abiertos que el contrato no fija (código del login, mayúsculas en el email, valor inicial de frecuencia, formato del id y PATCH vacío), con la parte en que se resuelve cada uno.
 - No se generó código.
+
+---
+
+## Parte 1 (ajuste) — Cierre de decisiones abiertas y guías de clase
+
+**Fecha:** 2026-10-08
+
+**Prompt:**
+
+```text
+Antes de la Parte 2, ajusta la documentación de la Parte 1:
+
+1. Agrega a CLAUDE.md esta regla 9:
+9. Antes de implementar cada parte, consulta la guía de clase correspondiente y los proyectos de clase que están abiertos en este espacio de trabajo, fuera de Modulo_3/ritmo_claro_api. Úsalos solo como referencia, sin modificarlos(igual puedes ver todas las clases que tuvimos de la 1 a la 4 del modulo 3). Sigue sus convenciones (configuración de Prisma 7, estructura de auth, guards, filtro de errores, Dockerfile) siempre que no contradigan el taller. Las guías tienen algunos errores: si algo no funciona o contradice el taller o la documentación oficial, avísame y explícame la diferencia en vez de copiarlo. No copies el contenido de las guías al repositorio.
+   Guía por parte:
+   - Parte 2: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/M2-C1-spa.html
+   - Parte 3: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/clase-02-modelado-prisma-postgresql-v2.html
+   - Parte 4: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/M3/Clase1/M3C1-autenticacion-registro-jwt.html
+   - Parte 5: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/Clase3_Modulo2.html, https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/clase4M2.html y https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/Repaso-Finanzas-API-SPA.html
+   - Parte 6: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/M3/Clase2/DevSenior_M3C2_RBAC.html
+   - Partes 7 y 8: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/M3/Clase3/index.html
+   - Partes 9 y 10: https://anamariaalvaradom.github.io/Dev_JavaScript_Viernes_Apoyos_Visuales/docs/M3/Clase4/M3C4-deploy-docker-produccion.html
+
+2. Cierra los puntos abiertos de docs/decisiones.md con estas decisiones y una justificación breve de cada una:
+   - El login exitoso responde 200, porque no crea un recurso.
+   - El email no distingue mayúsculas. Se normaliza con trim y minúsculas en registro y login antes de guardar o comparar.
+   - frecuencia tiene como valor inicial DIARIA y estado tiene ACTIVO.
+   - Un id que no tiene formato UUID responde 400 (ParseUUIDPipe). Un UUID válido que no existe responde 404.
+   - Un PATCH con body vacío responde 400 con el mensaje "Envía al menos un campo para actualizar".
+
+3. Actualiza el README para que coincida (quita el asterisco del login y ajusta los criterios de aceptación afectados), elimina la tabla de puntos abiertos y agrega la entrada correspondiente en docs/uso-ia.md.
+
+Commit con el mensaje "docs(parte-1): cierra decisiones abiertas y agrega guías de clase".
+```
+
+**Resumen de lo generado:**
+
+- `CLAUDE.md`: regla 9, que pide consultar la guía de clase y los proyectos de clase antes de cada parte, solo como referencia, e incluye la lista de guías por parte.
+- `docs/decisiones.md`: se eliminó la tabla de puntos abiertos y se agregaron D-06 (login 200), D-07 (email normalizado con trim y minúsculas), D-08 (valores iniciales `ACTIVO` y `DIARIA`), D-09 (id sin formato UUID → 400 con `ParseUUIDPipe`) y D-10 (PATCH vacío → 400 con mensaje fijo), cada una con justificación y criterios de comprobación. D-01 ahora distingue el UUID inexistente del formato inválido.
+- `README.md`:
+  - Matriz: login con `200` y sin asterisco; rechazos `400` por formato UUID y por body vacío en las rutas por id.
+  - HU-04, HU-06 y HU-08 actualizadas.
+  - Contrato de error: casos nuevos de `400` y ejemplo de `path` con un UUID.
+  - Criterios: renumerados los de registro (CA-REG-01 a 08) y login (CA-LOG-01 a 06) para incluir la normalización del email; nuevos CA-CRUD-11 (UUID inválido) y CA-CRUD-12 (PATCH vacío); ajustado CA-CRUD-01 por los valores iniciales.
