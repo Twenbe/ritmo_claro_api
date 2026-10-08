@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -45,7 +46,20 @@ export class HabitosService {
     });
   }
 
-  async obtenerUno(id: string) {
+  // Ruta administrativa: todos los hábitos, con solo id y nombre del dueño.
+  listarTodos() {
+    return this.prisma.habito.findMany({
+      select: {
+        ...CAMPOS_HABITO,
+        usuario: { select: { id: true, nombre: true } },
+      },
+      orderBy: { creadoEn: 'desc' },
+    });
+  }
+
+  // D-01 y D-02: primero existencia (404) y luego propiedad (403).
+  // La regla aplica también a ADMIN.
+  async obtenerUno(id: string, usuarioId: string) {
     const habito = await this.prisma.habito.findUnique({
       where: { id },
       select: CAMPOS_HABITO,
@@ -53,10 +67,19 @@ export class HabitosService {
     if (!habito) {
       throw new NotFoundException('Hábito no encontrado');
     }
+    if (habito.usuarioId !== usuarioId) {
+      throw new ForbiddenException(
+        'No tienes permiso para acceder a este hábito',
+      );
+    }
     return habito;
   }
 
-  async actualizar(id: string, dto: ActualizarHabitoDto | undefined) {
+  async actualizar(
+    id: string,
+    dto: ActualizarHabitoDto | undefined,
+    usuarioId: string,
+  ) {
     // Express 5 deja el body en undefined si la petición no trae cuerpo.
     const { nombre, descripcion, estado, frecuencia } = dto ?? {};
     // Prisma ignora los campos undefined: solo cambian los enviados.
@@ -66,7 +89,7 @@ export class HabitosService {
       throw new BadRequestException('Envía al menos un campo para actualizar');
     }
 
-    await this.obtenerUno(id);
+    await this.obtenerUno(id, usuarioId);
     return this.prisma.habito.update({
       where: { id },
       data: cambios,
@@ -74,8 +97,8 @@ export class HabitosService {
     });
   }
 
-  async eliminar(id: string) {
-    await this.obtenerUno(id);
+  async eliminar(id: string, usuarioId: string) {
+    await this.obtenerUno(id, usuarioId);
     await this.prisma.habito.delete({ where: { id } });
   }
 }

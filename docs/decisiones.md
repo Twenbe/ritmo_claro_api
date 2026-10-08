@@ -30,7 +30,7 @@ Registro de decisiones del proyecto Ritmo Claro API. Cada decisión indica qué 
 
 ## D-04. El rol ADMIN se asigna con un script interno, nunca por API
 
-**Decisión.** Ninguna ruta de la API permite elegir o cambiar el rol. El registro siempre crea `USUARIO`. Para convertir una cuenta existente en ADMIN se usa un script interno, versionado y documentado en el README, que un operador ejecuta contra la base con las variables de entorno del entorno correspondiente. El script se implementa en la parte que corresponda; esta parte solo fija la regla.
+**Decisión.** Ninguna ruta de la API permite elegir o cambiar el rol. El registro siempre crea `USUARIO`. Para convertir una cuenta existente en ADMIN se usa un script interno, versionado y documentado en el README, que un operador ejecuta contra la base con las variables de entorno del entorno correspondiente. El script es `npm run admin:promover -- <email>` ([scripts/promover-admin.js](../scripts/promover-admin.js)), documentado en la sección "Asignar el rol ADMIN" del README.
 
 **Justificación.** El contrato prohíbe una ruta pública para elegir o cambiar el rol, y la rúbrica penaliza los "roles confiados al cliente". Un script fuera del flujo HTTP exige acceso a la infraestructura, no solo una cuenta, y deja el procedimiento escrito y repetible.
 

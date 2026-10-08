@@ -273,3 +273,51 @@ Commit al final.
   - DELETE → 204 sin cuerpo, y la consulta posterior → 404.
 - Hueco documentado hasta la Parte 6: un segundo usuario obtiene 200 al leer por id un hábito ajeno; su listado sí está aislado.
 - Los usuarios de prueba (y sus hábitos, por cascada) se eliminaron de la base local.
+
+---
+
+## Parte 6 — Roles, propiedad y ruta administrativa
+
+**Fecha:** 2026-10-08
+
+**Prompt:**
+
+```text
+Trabaja solo en Modulo_3/ritmo_claro_api: lee primero su CLAUDE.md y ejecuta todos los comandos dentro de esa carpeta.
+
+Parte 6 del taller, según CLAUDE.md y docs/taller.pdf.
+
+1. En HabitosService, antes de entregar, editar o eliminar por id: si no existe responde 404, si existe y su usuarioId no coincide con el del token responde 403 con un mensaje genérico. Aplica igual para ADMIN, según docs/decisiones.md.
+2. Crea roles.decorator.ts (@Roles con el enum Rol) y roles.guard.ts, que usa Reflector, se ejecuta después de JwtAuthGuard y responde 403 si el rol no está permitido.
+3. Agrega GET /habitos/admin/todos con JwtAuthGuard, RolesGuard y @Roles(ADMIN), declarado antes de las rutas con :id. Usa un select explícito: los campos del hábito y del usuario solo id y nombre. passwordHash nunca sale.
+4. Crea un script npm "admin:promover" que reciba un email y cambie su rol a ADMIN usando la DATABASE_URL del entorno. Documenta en README que, tras promover, hay que volver a hacer login porque el token anterior conserva el rol viejo.
+5. Prueba con curl con el usuario A, el usuario B y un ADMIN promovido con el script. A crea un hábito, B intenta verlo, editarlo y borrarlo (403 en cada caso), USUARIO llama la ruta admin (403), ADMIN la llama (200) y sin token (401). Muéstrame una tabla con los status observados y actualiza la matriz de permisos del README con esos códigos.
+
+Commit al final.
+```
+
+**Resumen de lo generado:**
+
+- Referencias: la guía `DevSenior_M3C2_RBAC` y `Clase3/finanzas-api`.
+  - Se mantuvo `Reflector.createDecorator<Rol[]>()`, que se usa como `@Roles([Rol.ADMIN])`.
+  - El guard usa `getAllAndOverride` (método y clase) en lugar de `get` (solo método).
+  - El listado admin usa un `select` con solo `id` y `nombre` del dueño; la clase hace `include` con `email`.
+  - La clase no tiene un script de promoción.
+- `roles.decorator.ts` y `roles.guard.ts`: el guard lee la metadata con `Reflector`, deja pasar si la ruta no declara roles y responde 403 con un mensaje genérico si el rol del token no está permitido.
+- `HabitosService`:
+  - `obtenerUno`, `actualizar` y `eliminar` reciben el `usuarioId` del token y comprueban primero la existencia (404) y luego la propiedad (403 "No tienes permiso para acceder a este hábito"), también para ADMIN (D-02). D-10 sigue evaluándose antes de consultar la base.
+  - `listarTodos` usa un `select` explícito con los campos del hábito más `usuario: { id, nombre }`.
+- `HabitosController`: `GET /habitos/admin/todos` con `@UseGuards(RolesGuard)` y `@Roles([Rol.ADMIN])`, declarada antes de las rutas con `:id`. `JwtAuthGuard` está a nivel de clase y por eso se ejecuta primero.
+- `scripts/promover-admin.js` y el script npm `admin:promover`:
+  - JavaScript plano con el cliente Prisma compilado en `dist/`. No usa `ts-node`, porque el cliente generado importa archivos `.js` que son `.ts`. Así también funciona dentro de la imagen Docker.
+  - Normaliza el email, termina con código 1 si la cuenta no existe, no hace cambios si ya es ADMIN y nunca imprime la cadena de conexión.
+- README:
+  - La matriz tiene una columna "Observado (local, 2026-10-08)".
+  - Nueva sección "Asignar el rol ADMIN", que advierte que hay que volver a iniciar sesión.
+  - D-04 en `decisiones.md` apunta al script.
+- Pruebas con curl (puerto de prueba 3999), sin errores 500:
+  - A: 200 al ver su hábito, 200 al editarlo y 204 al eliminarlo.
+  - B sobre el hábito de A: ver, editar y borrar → 403 en cada caso; UUID inexistente → 404.
+  - ADMIN sobre el hábito de A por `/habitos/:id`: ver, editar y borrar → 403. El hábito quedó intacto.
+  - USUARIO en `admin/todos` → 403; token emitido antes de promover → 403; ADMIN → 200 con los hábitos de las tres personas, sin `passwordHash` ni `email`; sin token → 401.
+- Los usuarios de prueba se eliminaron de la base local.

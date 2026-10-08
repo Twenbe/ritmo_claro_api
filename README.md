@@ -2,7 +2,7 @@
 
 API backend para gestionar hábitos de bienestar de los participantes de Ritmo Claro, con autenticación JWT, permisos por rol y propiedad, y persistencia en PostgreSQL.
 
-> Estado: **Parte 5 — CRUD de hábitos.** Funcionan el registro, el login y los cinco endpoints de `/habitos` con JWT. La verificación de propiedad (403) y la ruta administrativa llegan en la Parte 6. El modelo está en [docs/modelo.md](docs/modelo.md) y las variables de entorno en [.env.example](.env.example). Las secciones de instalación, arquitectura, Docker y despliegue se agregan en las partes siguientes.
+> Estado: **Parte 6 — roles y propiedad.** Funcionan el registro, el login, el CRUD de `/habitos` con verificación de propiedad (403) y la ruta administrativa `GET /habitos/admin/todos` solo para ADMIN. El modelo está en [docs/modelo.md](docs/modelo.md) y las variables de entorno en [.env.example](.env.example). Las secciones de instalación, arquitectura, Docker y despliegue se agregan en las partes siguientes.
 
 ## Problema, actores y valor del MVP
 
@@ -35,18 +35,18 @@ Cada historia indica actor, acción y un resultado que se puede comprobar con un
 
 ## Matriz de endpoints y permisos
 
-Las rutas `/habitos` exigen un JWT válido; si falta o está vencido o alterado, la respuesta es `401`.
+Las rutas `/habitos` exigen un JWT válido; si falta o está vencido o alterado, la respuesta es `401`. La columna "Observado" registra las pruebas con curl de las Partes 4 a 6 con usuario A, usuario B y un ADMIN. Los rechazos `400` por validación de datos (enums, longitudes y campos no permitidos) se comprueban en la Parte 7.
 
-| Método y ruta | Acceso | Actor autorizado | Resultado esperado | Rechazos esperados |
-|---------------|--------|------------------|--------------------|--------------------|
-| `POST /auth/register` | Público | Visitante | `201`: cuenta creada con rol `USUARIO` y email normalizado, sin `passwordHash`. No acepta `rol`. | `400` datos inválidos o campos no permitidos · `409` email repetido (sin distinguir mayúsculas) |
-| `POST /auth/login` | Público | Visitante con cuenta | `200` con `access_token` (JWT con `sub`, `email`, `rol` y expiración de 1 h). | `400` datos con formato inválido · `401` credenciales inválidas (mensaje genérico) |
-| `POST /habitos` | Con sesión | USUARIO, ADMIN | `201`: hábito creado con `usuarioId` tomado del token, `estado: ACTIVO` y `frecuencia: DIARIA` si no se envía. | `400` · `401` |
-| `GET /habitos` | Con sesión | USUARIO, ADMIN | `200`: solo los hábitos propios. | `401` |
-| `GET /habitos/:id` | Dueño | Dueño del hábito | `200`: el hábito. | `400` id sin formato UUID · `401` · `403` ajeno · `404` inexistente |
-| `PATCH /habitos/:id` | Dueño | Dueño del hábito | `200`: actualiza solo los campos enviados. | `400` datos inválidos, body vacío o id sin formato UUID · `401` · `403` ajeno · `404` inexistente |
-| `DELETE /habitos/:id` | Dueño | Dueño del hábito | `204` sin cuerpo; eliminación física. | `400` id sin formato UUID · `401` · `403` ajeno · `404` inexistente |
-| `GET /habitos/admin/todos` | ADMIN | ADMIN | `200`: todos los hábitos, sin datos sensibles. | `401` · `403` si el rol es USUARIO |
+| Método y ruta | Acceso | Actor autorizado | Resultado esperado | Rechazos esperados | Observado (local, 2026-10-08) |
+|---------------|--------|------------------|--------------------|--------------------|-------------------------------|
+| `POST /auth/register` | Público | Visitante | `201`: cuenta creada con rol `USUARIO` y email normalizado, sin `passwordHash`. No acepta `rol`. | `400` datos inválidos o campos no permitidos · `409` email repetido (sin distinguir mayúsculas) | `201` · `409` (igual y con otras mayúsculas) |
+| `POST /auth/login` | Público | Visitante con cuenta | `200` con `access_token` (JWT con `sub`, `email`, `rol` y expiración de 1 h). | `400` datos con formato inválido · `401` credenciales inválidas (mensaje genérico) | `200` · `401` (email inexistente y contraseña incorrecta) |
+| `POST /habitos` | Con sesión | USUARIO, ADMIN | `201`: hábito creado con `usuarioId` tomado del token, `estado: ACTIVO` y `frecuencia: DIARIA` si no se envía. | `400` · `401` | `201` (USUARIO y ADMIN) |
+| `GET /habitos` | Con sesión | USUARIO, ADMIN | `200`: solo los hábitos propios. | `401` | `200` solo propios (A, B y ADMIN) · `401` sin token y con token alterado |
+| `GET /habitos/:id` | Dueño | Dueño del hábito | `200`: el hábito. | `400` id sin formato UUID · `401` · `403` ajeno · `404` inexistente | `200` dueño · `403` B · `403` ADMIN · `404` · `400` |
+| `PATCH /habitos/:id` | Dueño | Dueño del hábito | `200`: actualiza solo los campos enviados. | `400` datos inválidos, body vacío o id sin formato UUID · `401` · `403` ajeno · `404` inexistente | `200` dueño · `403` B · `403` ADMIN · `400` body vacío |
+| `DELETE /habitos/:id` | Dueño | Dueño del hábito | `204` sin cuerpo; eliminación física. | `400` id sin formato UUID · `401` · `403` ajeno · `404` inexistente | `204` dueño, luego `404` · `403` B · `403` ADMIN |
+| `GET /habitos/admin/todos` | ADMIN | ADMIN | `200`: todos los hábitos, sin datos sensibles. | `401` · `403` si el rol es USUARIO | `200` ADMIN, sin `passwordHash` ni `email` · `403` USUARIO · `403` token emitido antes de promover · `401` sin token |
 
 ## Contrato de error
 
@@ -143,6 +143,20 @@ Los criterios usan usuario A, usuario B (ambos `USUARIO`) y un `ADMIN`. "Contrat
 - CA-ROL-04: sin token, `GET /habitos/admin/todos` → `401`.
 - CA-ROL-05: ninguna ruta de la API permite asignar o cambiar el rol; enviar `rol` en registro → `400`.
 - CA-ROL-06: un token emitido antes del cambio de rol conserva el rol anterior hasta que vence.
+
+## Asignar el rol ADMIN
+
+El rol ADMIN nunca se asigna por la API (D-04). Para promover una cuenta ya registrada se usa el script interno `admin:promover`, que usa la `DATABASE_URL` del entorno (o del archivo `.env`):
+
+```bash
+npm run build                                   # el script usa el cliente Prisma compilado en dist/
+npm run admin:promover -- persona@ejemplo.com
+```
+
+- El email se normaliza (trim y minúsculas), igual que en el registro.
+- Si la cuenta no existe, el script termina con código 1. Si ya es ADMIN, no hace cambios.
+- **Después de promover, la persona debe volver a hacer login.** El rol viaja dentro del JWT: el token emitido antes del cambio conserva el rol `USUARIO` hasta que vence (1 h) y la ruta administrativa le sigue respondiendo `403`.
+- Para producción se ejecuta igual, con la `DATABASE_URL` de producción en el entorno de quien opera el script.
 
 ## Decisiones
 
