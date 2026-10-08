@@ -167,3 +167,56 @@ Commit al final.
   - `node dist/main` arranca y `GET /` → 200;
   - consulta real con el cliente CJS compilado (`usuario.count` y `habito.count`);
   - `prisma migrate status` reporta el esquema al día.
+
+---
+
+## Parte 4 — Registro, login, bcrypt, JWT y Passport
+
+**Fecha:** 2026-10-08
+
+**Prompt:**
+
+```text
+Trabaja solo en Modulo_3/ritmo_claro_api: lee primero su CLAUDE.md y ejecuta todos los comandos dentro de esa carpeta.
+
+Parte 4 del taller, según CLAUDE.md y docs/taller.pdf.
+
+1. RegisterDto con nombre, email y password, y LoginDto con email y password. Ninguno acepta rol. Las reglas completas de validación van en la Parte 7, pero deja ya los decoradores básicos.
+2. AuthService.register normaliza el email (trim y minúsculas), responde 409 si ya existe (verificando antes y también capturando el error de unicidad de Prisma), guarda solo el hash con bcrypt (10 rondas) y devuelve 201 con id, nombre, email, rol y creadoEn, nunca passwordHash.
+3. AuthService.login normaliza el email igual y responde 401 con el mensaje genérico "Credenciales inválidas" tanto si el email no existe como si la contraseña falla. Si son correctas, devuelve 200 con { access_token }.
+4. El JWT lleva sub, email y rol, expira en 1 hora y se firma con JWT_SECRET leído con ConfigService (JwtModule.registerAsync). Si JWT_SECRET falta, la app no debe arrancar.
+5. Crea jwt.strategy.ts (devuelve { id, email, rol } desde el payload), jwt-auth.guard.ts y el decorador @UsuarioActual() en usuario-actual.decorator.ts.
+6. No agregues rutas fuera del contrato. Las pruebas de token ausente o alterado las haremos contra /habitos en la Parte 5.
+7. Prueba con curl el registro válido, el email duplicado (también con mayúsculas distintas), el login válido y la contraseña incorrecta, y muéstrame los status obtenidos. Explícame qué contiene el token decodificado sin mostrar el secreto.
+
+Commit al final.
+```
+
+**Resumen de lo generado:**
+
+- Referencia: la guía de clase y `Clase3/finanzas-api`. Se siguió su estructura, con estas diferencias:
+  - `JwtModule.registerAsync` con `ConfigService`, en lugar de `register` con `process.env`: este último puede leer el secreto antes de que se cargue `.env`.
+  - El error de configuración no se lanza como `UnauthorizedException`.
+  - Se normaliza el email y se captura el `P2002` de Prisma.
+  - `@HttpCode(200)` en el login.
+  - El registro devuelve también `rol` y `creadoEn`.
+- `RegisterDto` y `LoginDto` con decoradores básicos (`IsString`, `IsNotEmpty`, `IsEmail`), sin `rol`. Todavía no actúan: el `ValidationPipe` global llega en la Parte 7.
+- `AuthService`:
+  - `register` normaliza el email (trim y minúsculas), verifica si ya existe → 409, guarda `bcrypt.hash` con 10 rondas y captura `P2002` → 409. Devuelve `id`, `nombre`, `email`, `rol` y `creadoEn` con `select`.
+  - `login` normaliza el email y responde 401 "Credenciales inválidas" en ambos casos de fallo. Firma `{ sub, email, rol }`.
+- `AuthController`: `POST /auth/register` (201) y `POST /auth/login` (`@HttpCode(200)`).
+- `AuthModule`: `PassportModule`, `JwtModule.registerAsync` (secreto con `getOrThrow`, `expiresIn: '1h'`) y `JwtStrategy`.
+- `jwt.strategy.ts` (Bearer, `ignoreExpiration: false`, devuelve `{ id, email, rol }`, exporta los tipos `JwtPayload` y `UsuarioAutenticado`), `jwt-auth.guard.ts` y `usuario-actual.decorator.ts`.
+- `AppModule`: `ConfigModule` valida al arrancar que `DATABASE_URL` y `JWT_SECRET` existan y no estén vacías. `getOrThrow` solo detecta `undefined`, no la cadena vacía.
+- Pruebas con curl (puerto de prueba 3999):
+  - registro válido → 201 sin `passwordHash`;
+  - duplicado → 409; duplicado con otras mayúsculas → 409;
+  - `rol: ADMIN` en el body → 201 con rol `USUARIO` (el rechazo con 400 llega en la Parte 7);
+  - contraseña incorrecta → 401; email inexistente → 401 con el mismo mensaje;
+  - login válido con otras mayúsculas → 200 con `access_token`.
+- Otras verificaciones:
+  - el payload decodificado contiene `sub`, `email`, `rol`, `iat` y `exp`, con `exp - iat` = 1 h;
+  - 5 registros simultáneos con el mismo email → un 201 y cuatro 409, sin errores 500;
+  - en la base solo hay hashes `$2b$10$` de 60 caracteres;
+  - con `JWT_SECRET` vacía la app no arranca ("Falta la variable de entorno JWT_SECRET").
+- Los usuarios de prueba se eliminaron de la base local al terminar.

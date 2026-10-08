@@ -2,7 +2,7 @@
 
 API backend para gestionar hábitos de bienestar de los participantes de Ritmo Claro, con autenticación JWT, permisos por rol y propiedad, y persistencia en PostgreSQL.
 
-> Estado: **Parte 3 — modelo Prisma, migración y persistencia PostgreSQL.** El modelo está en [docs/modelo.md](docs/modelo.md) y las variables de entorno en [.env.example](.env.example); `auth` y `habitos` todavía no tienen lógica. Las secciones de instalación, arquitectura, Docker y despliegue se agregan en las partes siguientes.
+> Estado: **Parte 4 — registro, login, bcrypt, JWT y Passport.** Funcionan `POST /auth/register` y `POST /auth/login`; el modelo está en [docs/modelo.md](docs/modelo.md) y las variables de entorno en [.env.example](.env.example). `habitos` todavía no tiene lógica. Las secciones de instalación, arquitectura, Docker y despliegue se agregan en las partes siguientes.
 
 ## Problema, actores y valor del MVP
 
