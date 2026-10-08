@@ -6,6 +6,9 @@ docs/taller.pdf
 /node_modules
 /build
 
+# Prisma Client generado (se regenera con prisma generate / npm run build)
+/src/generated
+
 # Logs
 logs
 *.log

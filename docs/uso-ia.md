@@ -120,3 +120,50 @@ Commit al final.
 - Módulos generados con el CLI (`--no-spec`): `prisma` (global, solo service exportado), `auth` y `habitos` (module, controller y service), más las carpetas `dto` con `.gitkeep`.
 - `AppModule` importa `ConfigModule.forRoot({ isGlobal: true })` y los tres módulos. `main.ts` lee `PORT` con `ConfigService` y usa 3000 por defecto.
 - Verificación: lint sin advertencias, `npm run build` correcto, test unitario de la plantilla en verde y `npm run start:dev` con `GET /` → 200.
+
+---
+
+## Parte 3 — Modelo Prisma, migración y persistencia PostgreSQL
+
+**Fecha:** 2026-10-08
+
+**Prompt:**
+
+```text
+Trabaja solo en Modulo_3/ritmo_claro_api: lee primero su CLAUDE.md y ejecuta todos los comandos dentro de esa carpeta.
+
+Parte 3 del taller, según CLAUDE.md y docs/taller.pdf.
+
+1. Inicializa Prisma 7 para PostgreSQL con prisma.config.ts y el cliente generado en src/generated/prisma. Verifica en la guía de clase y en la documentación de Prisma 7 la configuración correcta del generador y del adapter de PostgreSQL, y que el cliente compile con NestJS en CommonJS.
+2. Modela según el contrato de la página 4 y docs/decisiones.md:
+   - Usuario con id uuid autogenerado, nombre, email único, passwordHash, rol (enum Rol, default USUARIO) y creadoEn.
+   - Habito con id uuid, nombre VarChar(120), descripcion opcional VarChar(500), estado (enum EstadoHabito, default ACTIVO), frecuencia (enum Frecuencia, default DIARIA), usuarioId con FK a Usuario y borrado en cascada, creadoEn e índice por usuarioId.
+3. Crea .env.example con DATABASE_URL, JWT_SECRET y PORT con valores ficticios. El archivo .env ya lo creé yo con mis valores reales: no lo modifiques ni muestres su contenido. Solo verifica que defina las tres variables.
+4. Ejecuta npx prisma format, npx prisma migrate dev --name modelo_inicial y npx prisma generate contra mi base local ritmo_claro.
+5. Implementa PrismaService con el adapter, conexión en onModuleInit y desconexión al cerrar, exportado desde el PrismaModule global.
+6. Agrega src/generated a .gitignore y asegúrate de que npm run build regenere el cliente. prisma/migrations sí va en git.
+7. Crea docs/modelo.md con un diagrama Mermaid de la relación, señalando la clave primaria y la foránea.
+8. Dime cómo verificar en Prisma Studio las tablas, el email único y los enums, y cómo comprobar que los datos persisten al reiniciar.
+
+Commit al final.
+```
+
+**Resumen de lo generado:**
+
+- Se contrastaron la guía de clase, el proyecto de clase y la documentación oficial de Prisma 7.
+  - Generador `prisma-client` con `output = "../src/generated/prisma"` y `moduleFormat = "cjs"`.
+  - Datasource sin `url`: la URL va en `prisma.config.ts`, que la lee de `DATABASE_URL` con `dotenv/config`.
+  - `prisma init` 7.10 genera `prisma7.config.ts` y además crea `.env`, `.gitignore` y carpetas de skills para agentes. Por eso se ejecutó en una carpeta temporal y solo se trajo su contenido.
+  - Se usa `prisma.config.ts`, como piden el taller y la clase. El CLI 7.10 lo sigue cargando cuando no existe `prisma7.config.ts`.
+- `prisma/schema.prisma` con los enums `Rol`, `EstadoHabito` y `Frecuencia` y los modelos `Usuario` (`@@map("usuarios")`) y `Habito` (`@@map("habitos")`): ids UUID, `email` único, `VarChar(120)` y `VarChar(500)`, valores iniciales `USUARIO`, `ACTIVO` y `DIARIA`, FK `usuarioId` con `onDelete: Cascade` e índice por `usuarioId`.
+- Migración `20261008201005_modelo_inicial` aplicada en la base local `ritmo_claro`, y cliente generado.
+- `.env.example` con valores ficticios. `.env` no se leyó ni se modificó: solo se comprobó que define las tres variables y se comparó su hash antes y después.
+- `PrismaService` extiende `PrismaClient` con el adapter `PrismaPg`. Toma la URL con `ConfigService.getOrThrow('DATABASE_URL')`, conecta en `onModuleInit` y desconecta en `onModuleDestroy`; `main.ts` llama a `app.enableShutdownHooks()` para que la desconexión también ocurra con SIGTERM o Ctrl+C.
+- `.gitignore` ignora `/src/generated` y `eslint.config.mjs` lo excluye del lint (el código generado no se edita a mano); el script `prebuild` (`prisma generate`) regenera el cliente en cada `npm run build`.
+- Corrección necesaria: `prisma.config.ts` se excluyó en `tsconfig.build.json`. Si no, `tsc` lo compilaba y movía la salida a `dist/src/main.js`, y `start:prod` (`node dist/main`) dejaba de funcionar.
+- `docs/modelo.md` con un diagrama Mermaid (PK, FK, UK) y una tabla de claves y restricciones.
+- Verificación:
+  - build desde cero (sin cliente ni `dist`);
+  - `node dist/main` arranca y `GET /` → 200;
+  - consulta real con el cliente CJS compilado (`usuario.count` y `habito.count`);
+  - `prisma migrate status` reporta el esquema al día.
