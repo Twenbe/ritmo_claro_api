@@ -84,3 +84,39 @@ Commit con el mensaje "docs(parte-1): cierra decisiones abiertas y agrega guías
   - HU-04, HU-06 y HU-08 actualizadas.
   - Contrato de error: casos nuevos de `400` y ejemplo de `path` con un UUID.
   - Criterios: renumerados los de registro (CA-REG-01 a 08) y login (CA-LOG-01 a 06) para incluir la normalización del email; nuevos CA-CRUD-11 (UUID inválido) y CA-CRUD-12 (PATCH vacío); ajustado CA-CRUD-01 por los valores iniciales.
+
+---
+
+## Parte 2 — Proyecto NestJS y arquitectura modular
+
+**Fecha:** 2026-10-08
+
+**Prompt:**
+
+```text
+Trabaja solo en Modulo_3/ritmo_claro_api: lee primero su CLAUDE.md y ejecuta todos los comandos dentro de esa carpeta.
+
+Parte 2 del taller, según CLAUDE.md y docs/taller.pdf.
+
+1. Muéstrame node --version y npm --version.
+2. Genera el proyecto con @nestjs/cli@11 usando npm y sin git propio. Como la carpeta ya tiene README.md, docs/, CLAUDE.md y .gitignore, genéralo de forma que no los pierdas: conserva mi README y fusiona los .gitignore.
+3. Instala @nestjs/config, Prisma 7 con su driver adapter de PostgreSQL según la documentación oficial de Prisma 7, @nestjs/jwt, @nestjs/passport, passport, passport-jwt, bcrypt, class-validator, class-transformer, @nestjs/swagger y helmet, con los tipos necesarios. Usa bcrypt, no bcryptjs.
+4. Crea los módulos prisma, auth y habitos con sus controllers y services donde correspondan, y las carpetas dto. PrismaModule será global y solo tendrá service por ahora.
+5. Importa ConfigModule como global y los módulos funcionales en AppModule. main.ts queda solo como punto de configuración global y lee PORT del entorno con 3000 por defecto.
+6. Arranca con npm run start:dev, confirma que responde y muéstrame el árbol de src.
+
+Commit al final.
+```
+
+**Resumen de lo generado:**
+
+- Versiones: Node v24.18.0 y npm 11.16.0.
+- Proyecto generado con `npx @nestjs/cli@11 new ritmo-claro-api --package-manager npm --skip-git --skip-install` en una carpeta temporal y copiado sin sobrescribir `README.md`, `CLAUDE.md`, `docs/` ni `.gitignore`. Con `--skip-git` Nest no genera `.gitignore`, así que se fusionaron las reglas propias con el `.gitignore` estándar de Nest que usan los proyectos de clase.
+- Dependencias:
+  - Producción: `@nestjs/config@4`, `@nestjs/jwt@11`, `@nestjs/passport@11`, `@nestjs/swagger@11`, `passport`, `passport-jwt`, `bcrypt`, `class-validator`, `class-transformer`, `helmet`, `@prisma/client@7`, `@prisma/adapter-pg@7`, `pg` y `dotenv`.
+  - Desarrollo: `prisma@7`, `@types/pg`, `@types/bcrypt` y `@types/passport-jwt`.
+  - Los `@nestjs/*` se fijaron a versiones mayores compatibles con Nest 11, porque `@nestjs/swagger@latest` (12.x) exige Nest 12.
+  - `dotenv` y `@types/pg` vienen de la guía oficial de Prisma 7; `prisma.config.ts` los necesita en la Parte 3.
+- Módulos generados con el CLI (`--no-spec`): `prisma` (global, solo service exportado), `auth` y `habitos` (module, controller y service), más las carpetas `dto` con `.gitkeep`.
+- `AppModule` importa `ConfigModule.forRoot({ isGlobal: true })` y los tres módulos. `main.ts` lee `PORT` con `ConfigService` y usa 3000 por defecto.
+- Verificación: lint sin advertencias, `npm run build` correcto, test unitario de la plantilla en verde y `npm run start:dev` con `GET /` → 200.

@@ -2,7 +2,7 @@
 
 API backend para gestionar hábitos de bienestar de los participantes de Ritmo Claro, con autenticación JWT, permisos por rol y propiedad, y persistencia en PostgreSQL.
 
-> Estado: **Parte 1 — requisitos, permisos y criterios de aceptación.** Todavía no hay código; las secciones de instalación, variables, arquitectura, Docker y despliegue se agregan en las partes siguientes.
+> Estado: **Parte 2 — proyecto NestJS y arquitectura modular.** Existen los módulos `prisma`, `auth` y `habitos` sin lógica todavía; las secciones de instalación, variables, arquitectura, Docker y despliegue se agregan en las partes siguientes.
 
 ## Problema, actores y valor del MVP
 
