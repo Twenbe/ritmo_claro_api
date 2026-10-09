@@ -2,7 +2,7 @@
 
 API backend para gestionar hábitos de bienestar de los participantes de Ritmo Claro, con autenticación JWT, permisos por rol y propiedad, y persistencia en PostgreSQL.
 
-> Estado: **Parte 6 — roles y propiedad.** Funcionan el registro, el login, el CRUD de `/habitos` con verificación de propiedad (403) y la ruta administrativa `GET /habitos/admin/todos` solo para ADMIN. El modelo está en [docs/modelo.md](docs/modelo.md) y las variables de entorno en [.env.example](.env.example). Las secciones de instalación, arquitectura, Docker y despliegue se agregan en las partes siguientes.
+> Estado: **Parte 7 — validación, errores y seguridad básica.** Registro, login, CRUD de `/habitos` con propiedad (403), ruta administrativa solo para ADMIN, validación global de entradas, contrato de error uniforme y Helmet. El modelo está en [docs/modelo.md](docs/modelo.md) y las variables de entorno en [.env.example](.env.example). Las secciones de instalación, arquitectura, Docker y despliegue se agregan en las partes siguientes.
 
 ## Problema, actores y valor del MVP
 
@@ -35,7 +35,7 @@ Cada historia indica actor, acción y un resultado que se puede comprobar con un
 
 ## Matriz de endpoints y permisos
 
-Las rutas `/habitos` exigen un JWT válido; si falta o está vencido o alterado, la respuesta es `401`. La columna "Observado" registra las pruebas con curl de las Partes 4 a 6 con usuario A, usuario B y un ADMIN. Los rechazos `400` por validación de datos (enums, longitudes y campos no permitidos) se comprueban en la Parte 7.
+Las rutas `/habitos` exigen un JWT válido; si falta o está vencido o alterado, la respuesta es `401`. La columna "Observado" registra las pruebas con curl de las Partes 4 a 6 con usuario A, usuario B y un ADMIN. En la Parte 7 se comprobaron además los `400` por validación (nombre corto, email inválido, enum inventado, longitudes, `rol` o `usuarioId` en el body, JSON mal formado) y el `500` genérico con PostgreSQL detenido.
 
 | Método y ruta | Acceso | Actor autorizado | Resultado esperado | Rechazos esperados | Observado (local, 2026-10-08) |
 |---------------|--------|------------------|--------------------|--------------------|-------------------------------|

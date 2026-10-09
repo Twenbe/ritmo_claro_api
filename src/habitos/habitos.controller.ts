@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -20,6 +21,12 @@ import { Rol } from '../generated/prisma/client';
 import { HabitosService } from './habitos.service';
 import { CrearHabitoDto } from './dto/crear-habito.dto';
 import { ActualizarHabitoDto } from './dto/actualizar-habito.dto';
+
+// D-09: un id sin formato UUID responde 400 antes de consultar la base.
+const ID_UUID = new ParseUUIDPipe({
+  exceptionFactory: () =>
+    new BadRequestException('El id debe ser un UUID válido'),
+});
 
 // JwtAuthGuard (clase) se ejecuta antes que RolesGuard (método).
 @UseGuards(JwtAuthGuard)
@@ -50,7 +57,7 @@ export class HabitosController {
 
   @Get(':id')
   obtenerUno(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ID_UUID) id: string,
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.habitosService.obtenerUno(id, usuario.id);
@@ -58,7 +65,7 @@ export class HabitosController {
 
   @Patch(':id')
   actualizar(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ID_UUID) id: string,
     @Body() dto: ActualizarHabitoDto,
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
@@ -68,7 +75,7 @@ export class HabitosController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   eliminar(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Param('id', ID_UUID) id: string,
     @UsuarioActual() usuario: UsuarioAutenticado,
   ) {
     return this.habitosService.eliminar(id, usuario.id);

@@ -321,3 +321,59 @@ Commit al final.
   - ADMIN sobre el hábito de A por `/habitos/:id`: ver, editar y borrar → 403. El hábito quedó intacto.
   - USUARIO en `admin/todos` → 403; token emitido antes de promover → 403; ADMIN → 200 con los hábitos de las tres personas, sin `passwordHash` ni `email`; sin token → 401.
 - Los usuarios de prueba se eliminaron de la base local.
+
+---
+
+## Parte 7 — Validación, errores estructurados y seguridad básica
+
+**Fecha:** 2026-10-08
+
+**Prompt:**
+
+```text
+Trabaja solo en Modulo_3/ritmo_claro_api: lee primero su CLAUDE.md y ejecuta todos los comandos dentro de esa carpeta.
+
+Parte 7 del taller, según CLAUDE.md y docs/taller.pdf.
+
+1. Validación de registro: nombre mínimo 2 caracteres, email válido y password mínimo 8. Validación de hábitos: nombre entre 3 y 120, descripcion opcional hasta 500 y enums válidos. Mensajes en español y comprensibles.
+2. ValidationPipe global con whitelist, transform y forbidNonWhitelisted. Confirma que docs/decisiones.md documenta que enviar rol o usuarioId produce 400.
+3. Crea http-exception.filter.ts global que responda siempre { statusCode, timestamp, path, message }:
+   - HttpException conserva su status y mensaje (los errores de validación como lista legible).
+   - El error de unicidad de Prisma da 409 y el de registro no encontrado da 404.
+   - Cualquier otro error da 500 con "Error interno del servidor" y registra el detalle completo solo con Logger.
+   - El 401 de Passport sale en español dentro del mismo contrato.
+4. Activa Helmet en main.ts.
+5. Prueba con curl y muéstrame las respuestas de: nombre corto, email inválido, enum inventado, campo rol en el registro, JSON mal formado, PATCH vacío (400), sin token (401), hábito ajeno (403), id inexistente (404) y email repetido (409). Para el 500, detén el servicio de PostgreSQL, haz una petición y muéstrame que la respuesta es genérica mientras el log conserva el diagnóstico. Luego dime cómo volver a iniciar el servicio. No dejes código de prueba en el repositorio.
+6. Confirma que ninguna respuesta incluye stack, passwordHash, JWT_SECRET ni DATABASE_URL.
+
+Commit al final.
+```
+
+(Durante la sesión: "Listo, PostgreSQL está detenido". El servicio lo detuvo el usuario, porque la sesión de la IA no tiene privilegios de administrador.)
+
+**Resumen de lo generado:**
+
+- Referencias: la guía `M3/Clase3` y `Clase3/finanzas-api`. Diferencias:
+  - Un solo filtro con `Logger` en lugar de dos filtros (general y Prisma) con `console.error`.
+  - Se agregó `forbidNonWhitelisted` (D-05).
+  - Se tradujeron los mensajes que la clase deja en inglés.
+- DTO con mensajes en español:
+  - Registro: nombre ≥ 2 caracteres, email válido y password ≥ 8.
+  - Login: email válido y password obligatoria.
+  - Hábito: nombre de 3 a 120 caracteres, descripción ≤ 500 y enums que listan sus valores válidos.
+- `main.ts`: Helmet, `ValidationPipe` global (`whitelist`, `forbidNonWhitelisted`, `transform`, `exceptionFactory`) y el filtro global.
+- `src/common/validacion.ts`: aplana los errores de class-validator en una lista y traduce "property X should not exist" a "El campo X no está permitido".
+- `src/common/filters/http-exception.filter.ts` (`@Catch()`), siempre con `{ statusCode, timestamp, path, message }`:
+  - Una `HttpException` conserva su status y mensaje.
+  - Prisma `P2002` → 409 y `P2025` → 404.
+  - Lo demás → 500 "Error interno del servidor", registrado con `Logger` incluyendo el código del error (por ejemplo `[ECONNREFUSED]`, que el stack de Prisma no muestra).
+  - Traduce dos mensajes de Nest en inglés: el JSON mal formado (Nest convierte el `SyntaxError` en un `BadRequestException` con el texto de V8) y "Cannot GET /x".
+- `JwtAuthGuard.handleRequest`: el 401 de Passport sale en español.
+- `ParseUUIDPipe` con el mensaje "El id debe ser un UUID válido".
+- Pruebas con curl (puerto de prueba 3999):
+  - nombre corto, email inválido, enums inventados, `rol` o `usuarioId` en el body, longitudes, POST sin body, id `abc` y JSON mal formado → 400 en español;
+  - PATCH vacío → 400; sin token o token alterado → 401; hábito ajeno → 403; id inexistente → 404; ruta inexistente → 404; email repetido → 409;
+  - Helmet envía sus cabeceras.
+- Revisión de 23 respuestas de error: sin stack, sin `passwordHash`, sin los nombres ni los valores reales de `JWT_SECRET` y `DATABASE_URL` (comparados sin imprimirlos), y todas con exactamente las 4 claves del contrato.
+- 500 con PostgreSQL detenido: la respuesta es genérica y el log conserva la ruta, el tipo, el código `ECONNREFUSED`, la consulta y el stack.
+- Hallazgo: con `PrismaPg`, `$connect()` no abre una conexión real, así que la app arranca aunque la base esté caída. Esto corrige lo explicado en la Parte 3.
