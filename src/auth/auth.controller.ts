@@ -1,19 +1,18 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import {
-  ApiBadRequestResponse,
-  ApiConflictResponse,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
-  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
-import { ErrorRespuestaDto } from '../common/dto/error-respuesta.dto';
+import { RespuestaError } from '../common/swagger/respuesta-error.decorator';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { UsuarioRespuestaDto } from './dto/usuario-respuesta.dto';
 import { TokenRespuestaDto } from './dto/token-respuesta.dto';
+
+const JSON_INVALIDO = 'El cuerpo de la petición no es un JSON válido';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -30,14 +29,48 @@ export class AuthController {
     description: 'Cuenta creada (sin passwordHash)',
     type: UsuarioRespuestaDto,
   })
-  @ApiBadRequestResponse({
-    description: 'Datos inválidos o campos no permitidos',
-    type: ErrorRespuestaDto,
-  })
-  @ApiConflictResponse({
-    description: 'El email ya está registrado (sin distinguir mayúsculas)',
-    type: ErrorRespuestaDto,
-  })
+  @RespuestaError(
+    400,
+    'Datos inválidos, campos no permitidos o JSON mal formado',
+    {
+      nombreCorto: {
+        resumen: 'Nombre de menos de 2 caracteres',
+        path: '/auth/register',
+        message: ['El nombre debe tener al menos 2 caracteres'],
+      },
+      emailInvalido: {
+        resumen: 'Email con formato inválido',
+        path: '/auth/register',
+        message: ['El email no tiene un formato válido'],
+      },
+      passwordCorta: {
+        resumen: 'Contraseña de menos de 8 caracteres',
+        path: '/auth/register',
+        message: ['La contraseña debe tener al menos 8 caracteres'],
+      },
+      campoRol: {
+        resumen: 'Se envió el campo rol',
+        path: '/auth/register',
+        message: ['El campo rol no está permitido'],
+      },
+      jsonInvalido: {
+        resumen: 'JSON mal formado',
+        path: '/auth/register',
+        message: JSON_INVALIDO,
+      },
+    },
+  )
+  @RespuestaError(
+    409,
+    'El email ya está registrado (sin distinguir mayúsculas)',
+    {
+      emailRepetido: {
+        resumen: 'Email ya registrado',
+        path: '/auth/register',
+        message: 'El email ya está registrado',
+      },
+    },
+  )
   register(@Body() dto: RegisterDto) {
     return this.authService.register(dto);
   }
@@ -53,15 +86,29 @@ export class AuthController {
     description: 'Credenciales válidas',
     type: TokenRespuestaDto,
   })
-  @ApiBadRequestResponse({
-    description: 'Datos con formato inválido',
-    type: ErrorRespuestaDto,
+  @RespuestaError(400, 'Datos con formato inválido o JSON mal formado', {
+    emailInvalido: {
+      resumen: 'Email con formato inválido',
+      path: '/auth/login',
+      message: ['El email no tiene un formato válido'],
+    },
+    jsonInvalido: {
+      resumen: 'JSON mal formado',
+      path: '/auth/login',
+      message: JSON_INVALIDO,
+    },
   })
-  @ApiUnauthorizedResponse({
-    description:
-      'Credenciales inválidas (mismo mensaje si el email no existe o la contraseña falla)',
-    type: ErrorRespuestaDto,
-  })
+  @RespuestaError(
+    401,
+    'Credenciales inválidas (mismo mensaje si el email no existe o la contraseña falla)',
+    {
+      credencialesInvalidas: {
+        resumen: 'Email inexistente o contraseña incorrecta',
+        path: '/auth/login',
+        message: 'Credenciales inválidas',
+      },
+    },
+  )
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
   }

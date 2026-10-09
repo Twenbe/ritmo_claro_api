@@ -459,3 +459,41 @@ Commit al final.
   - Se ejecutó con Newman vía `npx` (sin agregarlo al proyecto): 23 peticiones, 48 aserciones, 0 fallos.
 - `docs/pruebas.md`: matriz ejecutada con curl en local, 18 filas "Cumple" y la fila de producción pendiente para la Parte 10. La columna de evidencia queda vacía para las capturas.
 - README: secciones de Swagger, Authorize y la colección de Postman.
+
+---
+
+## Corrección — ejemplos de error en Swagger
+
+**Fecha:** 2026-10-08
+
+**Prompt:**
+
+```text
+Trabaja solo en Modulo_3/ritmo_claro_api: lee primero su CLAUDE.md.
+
+En Swagger, los ejemplos de error usan un valor genérico de ErrorRespuestaDto: por ejemplo, el 401 de POST /auth/login muestra statusCode 400, path /habitos y "Hábito no encontrado". Corrige los ejemplos para que cada respuesta de error de cada operación muestre su propio statusCode, el path de esa ruta y el mensaje real que devuelve la API (por ejemplo, 401 en login con "Credenciales inválidas"). Verifica comparando los valores de los ejemplos, no solo las claves, contra respuestas reales. Registra en docs/uso-ia.md que la verificación anterior no detectó este error y por qué. Commit y push.
+```
+
+**Error que la verificación de la Parte 8 no detectó.** Todas las respuestas de error referenciaban `ErrorRespuestaDto` sin ejemplos propios. Swagger UI arma entonces el ejemplo con los `example` de cada propiedad del esquema (`400`, `/habitos`, "Hábito no encontrado"), así que todas las operaciones mostraban la misma combinación, y además imposible. Por ejemplo, el 401 de `POST /auth/login` aparecía como un 400 de `/habitos` que decía "Hábito no encontrado".
+
+**Por qué no se detectó.** La verificación de la Parte 8 comparaba estructura, no contenido:
+- que las rutas, los enums y las **claves** de las respuestas coincidieran;
+- que cada status observado estuviera **declarado** en su operación.
+
+Nunca leyó los valores que Swagger muestra como ejemplo ni los comparó con lo que devuelve la API. Una respuesta podía tener las claves correctas (`statusCode`, `timestamp`, `path`, `message`) y aun así mostrar valores falsos, y la verificación no tenía forma de notarlo. Además, la IA revisó el render de `/docs` solo con las operaciones colapsadas, donde los ejemplos de respuesta no aparecen.
+
+**Resumen de lo generado:**
+
+- `src/common/swagger/respuesta-error.decorator.ts`: decorador `RespuestaError(status, descripción, ejemplos)` que declara ejemplos propios (`examples`) con el contrato completo: el mismo `statusCode`, el `path` de la ruta y el mensaje real.
+- `auth.controller.ts` y `habitos.controller.ts`:
+  - 33 ejemplos, uno por cada causa de error de cada operación. Por ejemplo, el 400 de PATCH distingue body vacío, enum inválido, `usuarioId` no permitido, JSON mal formado e id sin formato UUID.
+  - El 401 pasó del nivel de clase a cada operación, porque su `path` cambia por ruta.
+- `ErrorRespuestaDto`: los ejemplos de sus propiedades ahora forman un caso real (404 en `/habitos/<uuid>` con "Hábito no encontrado"), para que la sección *Schemas* no muestre una combinación imposible.
+- Verificación nueva con un script temporal fuera del repositorio. Para cada ejemplo de error de `/docs-json` ejecuta una petición real que provoca ese caso y compara **valores**:
+  - `statusCode` igual al real y al status de la respuesta;
+  - `path` igual al real, normalizando los UUID;
+  - `message` idéntico (texto o lista);
+  - mismas claves en el mismo orden.
+
+  También falla si una respuesta de error no tiene ejemplos propios, o si un ejemplo no tiene una petición que lo verifique. Resultado: los 33 ejemplos coinciden con la API.
+- La verificación anterior (rutas, enums, claves y códigos) se volvió a ejecutar y sigue pasando.

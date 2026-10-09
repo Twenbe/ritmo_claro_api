@@ -13,17 +13,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
-  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiCreatedResponse,
-  ApiForbiddenResponse,
   ApiNoContentResponse,
-  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiParam,
   ApiTags,
-  ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -31,7 +27,10 @@ import { Roles } from '../auth/roles.decorator';
 import { UsuarioActual } from '../auth/usuario-actual.decorator';
 import type { UsuarioAutenticado } from '../auth/jwt.strategy';
 import { Rol } from '../generated/prisma/client';
-import { ErrorRespuestaDto } from '../common/dto/error-respuesta.dto';
+import {
+  RespuestaError,
+  UUID_EJEMPLO,
+} from '../common/swagger/respuesta-error.decorator';
 import { HabitosService } from './habitos.service';
 import { CrearHabitoDto } from './dto/crear-habito.dto';
 import { ActualizarHabitoDto } from './dto/actualizar-habito.dto';
@@ -46,31 +45,58 @@ const ID_UUID = new ParseUUIDPipe({
     new BadRequestException('El id debe ser un UUID válido'),
 });
 
+// Ejemplos de error de Swagger: cada uno con el path de su ruta y el
+// mensaje real que devuelve la API.
+const RUTA_ID = `/habitos/${UUID_EJEMPLO}`;
 const PARAM_ID = ApiParam({
   name: 'id',
   format: 'uuid',
   description: 'Id del hábito (UUID)',
 });
-const RESPUESTA_ID_INVALIDO = ApiBadRequestResponse({
-  description: 'El id no tiene formato UUID',
-  type: ErrorRespuestaDto,
+const sinToken = (path: string) =>
+  RespuestaError(401, 'Falta el token, no es válido o expiró', {
+    sinToken: {
+      resumen: 'Sin token, token alterado o vencido',
+      path,
+      message: 'No autenticado: el token falta, no es válido o expiró',
+    },
+  });
+const ID_INVALIDO = {
+  resumen: 'El id no tiene formato UUID',
+  path: '/habitos/abc',
+  message: 'El id debe ser un UUID válido',
+};
+const JSON_INVALIDO = (path: string) => ({
+  resumen: 'JSON mal formado',
+  path,
+  message: 'El cuerpo de la petición no es un JSON válido',
 });
-const RESPUESTA_AJENO = ApiForbiddenResponse({
-  description: 'El hábito existe pero es de otra persona (también para ADMIN)',
-  type: ErrorRespuestaDto,
-});
-const RESPUESTA_INEXISTENTE = ApiNotFoundResponse({
-  description: 'No existe un hábito con ese id',
-  type: ErrorRespuestaDto,
-});
+const HABITO_AJENO = RespuestaError(
+  403,
+  'El hábito existe pero es de otra persona (también para ADMIN)',
+  {
+    habitoAjeno: {
+      resumen: 'Hábito de otra persona',
+      path: RUTA_ID,
+      message: 'No tienes permiso para acceder a este hábito',
+    },
+  },
+);
+const HABITO_INEXISTENTE = RespuestaError(
+  404,
+  'No existe un hábito con ese id',
+  {
+    habitoInexistente: {
+      resumen: 'UUID válido que no existe',
+      path: RUTA_ID,
+      message: 'Hábito no encontrado',
+    },
+  },
+);
 
 // JwtAuthGuard (clase) se ejecuta antes que RolesGuard (método).
 @ApiTags('habitos')
 @ApiBearerAuth()
-@ApiUnauthorizedResponse({
-  description: 'Falta el token, no es válido o expiró',
-  type: ErrorRespuestaDto,
-})
 @UseGuards(JwtAuthGuard)
 @Controller('habitos')
 export class HabitosController {
@@ -86,10 +112,29 @@ export class HabitosController {
     description: 'Hábito creado',
     type: HabitoRespuestaDto,
   })
-  @ApiBadRequestResponse({
-    description: 'Datos inválidos o campos no permitidos',
-    type: ErrorRespuestaDto,
-  })
+  @RespuestaError(
+    400,
+    'Datos inválidos, campos no permitidos o JSON mal formado',
+    {
+      nombreInvalido: {
+        resumen: 'Nombre fuera de 3 a 120 caracteres',
+        path: '/habitos',
+        message: ['El nombre debe tener entre 3 y 120 caracteres'],
+      },
+      enumInvalido: {
+        resumen: 'Frecuencia inexistente',
+        path: '/habitos',
+        message: ['La frecuencia debe ser una de: DIARIA, SEMANAL, MENSUAL'],
+      },
+      campoUsuarioId: {
+        resumen: 'Se envió usuarioId',
+        path: '/habitos',
+        message: ['El campo usuarioId no está permitido'],
+      },
+      jsonInvalido: JSON_INVALIDO('/habitos'),
+    },
+  )
+  @sinToken('/habitos')
   crear(
     @Body() dto: CrearHabitoDto,
     @UsuarioActual() usuario: UsuarioAutenticado,
@@ -103,6 +148,7 @@ export class HabitosController {
     description: 'Hábitos del usuario autenticado',
     type: [HabitoRespuestaDto],
   })
+  @sinToken('/habitos')
   listarPropios(@UsuarioActual() usuario: UsuarioAutenticado) {
     return this.habitosService.listarPropios(usuario.id);
   }
@@ -120,9 +166,13 @@ export class HabitosController {
     description: 'Todos los hábitos',
     type: [HabitoAdminRespuestaDto],
   })
-  @ApiForbiddenResponse({
-    description: 'El rol del token no es ADMIN',
-    type: ErrorRespuestaDto,
+  @sinToken('/habitos/admin/todos')
+  @RespuestaError(403, 'El rol del token no es ADMIN', {
+    rolInsuficiente: {
+      resumen: 'Token de una cuenta USUARIO',
+      path: '/habitos/admin/todos',
+      message: 'No tienes permiso para acceder a este recurso',
+    },
   })
   listarTodos() {
     return this.habitosService.listarTodos();
@@ -132,9 +182,12 @@ export class HabitosController {
   @ApiOperation({ summary: 'Obtener un hábito propio' })
   @PARAM_ID
   @ApiOkResponse({ description: 'El hábito', type: HabitoRespuestaDto })
-  @RESPUESTA_ID_INVALIDO
-  @RESPUESTA_AJENO
-  @RESPUESTA_INEXISTENTE
+  @RespuestaError(400, 'El id no tiene formato UUID', {
+    idInvalido: ID_INVALIDO,
+  })
+  @sinToken(RUTA_ID)
+  @HABITO_AJENO
+  @HABITO_INEXISTENTE
   obtenerUno(
     @Param('id', ID_UUID) id: string,
     @UsuarioActual() usuario: UsuarioAutenticado,
@@ -153,13 +206,32 @@ export class HabitosController {
     description: 'Hábito actualizado',
     type: HabitoRespuestaDto,
   })
-  @ApiBadRequestResponse({
-    description:
-      'Datos inválidos, campos no permitidos, body vacío o id sin formato UUID',
-    type: ErrorRespuestaDto,
-  })
-  @RESPUESTA_AJENO
-  @RESPUESTA_INEXISTENTE
+  @RespuestaError(
+    400,
+    'Datos inválidos, campos no permitidos, body vacío, JSON mal formado o id sin formato UUID',
+    {
+      bodyVacio: {
+        resumen: 'Body vacío',
+        path: RUTA_ID,
+        message: 'Envía al menos un campo para actualizar',
+      },
+      enumInvalido: {
+        resumen: 'Estado inexistente',
+        path: RUTA_ID,
+        message: ['El estado debe ser uno de: ACTIVO, PAUSADO, ARCHIVADO'],
+      },
+      campoUsuarioId: {
+        resumen: 'Se envió usuarioId',
+        path: RUTA_ID,
+        message: ['El campo usuarioId no está permitido'],
+      },
+      jsonInvalido: JSON_INVALIDO(RUTA_ID),
+      idInvalido: ID_INVALIDO,
+    },
+  )
+  @sinToken(RUTA_ID)
+  @HABITO_AJENO
+  @HABITO_INEXISTENTE
   actualizar(
     @Param('id', ID_UUID) id: string,
     @Body() dto: ActualizarHabitoDto,
@@ -177,9 +249,12 @@ export class HabitosController {
   })
   @PARAM_ID
   @ApiNoContentResponse({ description: 'Hábito eliminado (sin cuerpo)' })
-  @RESPUESTA_ID_INVALIDO
-  @RESPUESTA_AJENO
-  @RESPUESTA_INEXISTENTE
+  @RespuestaError(400, 'El id no tiene formato UUID', {
+    idInvalido: ID_INVALIDO,
+  })
+  @sinToken(RUTA_ID)
+  @HABITO_AJENO
+  @HABITO_INEXISTENTE
   eliminar(
     @Param('id', ID_UUID) id: string,
     @UsuarioActual() usuario: UsuarioAutenticado,
