@@ -1,0 +1,16 @@
+# Secretos: nunca entran al contexto de construcción ni a la imagen
+.env
+.env.*
+!.env.example
+
+# Se regeneran dentro de la imagen (npm ci, prisma generate, nest build)
+node_modules
+dist
+src/generated
+
+# Historial, logs y archivos que no hacen falta para construir
+.git
+logs
+*.log
+coverage
+docs/taller.pdf

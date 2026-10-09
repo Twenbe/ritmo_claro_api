@@ -497,3 +497,58 @@ Nunca leyó los valores que Swagger muestra como ejemplo ni los comparó con lo 
 
   También falla si una respuesta de error no tiene ejemplos propios, o si un ejemplo no tiene una petición que lo verifique. Resultado: los 33 ejemplos coinciden con la API.
 - La verificación anterior (rutas, enums, claves y códigos) se volvió a ejecutar y sigue pasando.
+
+---
+
+## Parte 9 — Repositorio reproducible y contenedor Docker
+
+**Fecha:** 2026-10-08
+
+**Prompt:**
+
+```text
+Trabaja solo en Modulo_3/ritmo_claro_api: lee primero su CLAUDE.md y ejecuta todos los comandos dentro de esa carpeta.
+
+Parte 9 del taller, según CLAUDE.md y docs/taller.pdf.
+
+1. Completa .env.example con DATABASE_URL, JWT_SECRET y PORT, con valores ficticios y un comentario que explique cada uno.
+2. Verifica que .gitignore excluya .env, node_modules, dist, src/generated, logs y docs/taller.pdf, y que prisma/migrations y package-lock.json estén versionados.
+3. Ejecuta npm run build y corrige cualquier error.
+4. Crea un Dockerfile multi-stage sobre node:24-slim, la misma versión mayor de Node que uso en local. Debe instalar con npm ci, generar Prisma, compilar y, en la imagen final, tener lo necesario para ejecutar prisma migrate deploy (CLI y prisma.config.ts). Al arrancar debe aplicar las migraciones y luego ejecutar la ruta real del main compilado (verifícala en dist). La app escucha en 0.0.0.0 y en el PORT del entorno. Pon un comentario breve en español encima de cada instrucción del Dockerfile explicando qué hace y por qué va en ese orden.
+5. Verifica que bcrypt funcione dentro del contenedor, porque npm 11 bloquea scripts de instalación y en local avisó por bcrypt y prisma.
+6. Crea .dockerignore excluyendo .env, .git, node_modules, dist, src/generated, logs y docs/taller.pdf.
+7. Si tengo Docker, construye con docker build -t ritmo-claro-api . y ejecuta con --env-file .env. Como mi PostgreSQL está instalado en mi computador, explícame el ajuste del host (host.docker.internal) sin modificar mi .env. Confirma que la imagen no contiene .env. Si no tengo Docker, dímelo y sigue con lo demás.
+8. Revisa git status y el historial completo (git log --all -- .env) para confirmar que .env nunca se commiteó.
+9. Completa el README con instalación local, variables, migraciones, build, ejecución y Docker.
+10. En docs/pruebas.md llena la columna evidencia de las filas locales con: "Runner de Postman 2026-10-08, 48/48 aprobadas (documento de evidencias, Fig. 77)".
+
+Commit al final.
+```
+
+**Resumen de lo generado:**
+
+- Referencias: la guía `M3C4-deploy-docker-produccion` y el Dockerfile de `Clase4`. Diferencias:
+  - La guía arranca `dist/src/main.js`: en ese proyecto `prisma.config.ts` se compila con la app. Aquí se excluyó en la Parte 3, y la ruta real verificada es `dist/main.js`.
+  - La guía usa una sola etapa con todas las dependencias de desarrollo en la imagen final; aquí es multi-stage.
+- **Docker no está instalado** en el equipo (ni Docker Desktop, Rancher o Podman), así que no se construyó ni ejecutó la imagen. En su lugar se emuló la etapa final en una carpeta temporal:
+  1. `npm ci --omit=dev` con el mismo lock;
+  2. se copiaron solo `package.json`, `prisma.config.ts`, `prisma/` y `dist/`;
+  3. se ejecutó el mismo `CMD` con las variables de `.env` cargadas en el entorno (equivalente a `--env-file`) y `PORT=3999`.
+
+  Resultado: `migrate deploy` respondió "No pending migrations to apply"; la API escuchó en `0.0.0.0:3999`; `/docs` → 200; sin token → 401; login (bcrypt) → 200 con la contraseña correcta y 401 con la incorrecta.
+- **bcrypt:**
+  - npm 11.16 tiene `strict-allow-scripts = false`: los scripts no aprobados solo generan un aviso y se ejecutan.
+  - Aunque se bloquearan, bcrypt 6 trae `prebuilds/linux-x64/bcrypt.glibc.node` y lo carga en tiempo de ejecución con `node-gyp-build`. Ese binario corresponde a Debian, la base de `node:24-slim`.
+  - El `postinstall` de `@prisma/engines` (motor de migraciones) sí se ejecutó en `npm ci --omit=dev`.
+  - No se pudo verificar dentro de un contenedor Linux real.
+- `prisma` pasó de `devDependencies` a `dependencies`, porque `migrate deploy` se ejecuta al arrancar. En el lock solo cambiaron marcas `devOptional`: mismas versiones e integridad.
+- `Dockerfile` multi-stage (`base` con openssl, `build`, `prod-deps`, `final` con el usuario `node`), con un comentario sobre cada instrucción. `CMD`: `npx --no-install prisma migrate deploy && exec node dist/main.js`; el `exec` deja a node como PID 1 para recibir SIGTERM.
+- `main.ts` escucha en `0.0.0.0`.
+- `.dockerignore`: excluye `.env` y `.env.*` (salvo `.env.example`), `node_modules`, `dist`, `src/generated`, `.git`, logs, `coverage` y `docs/taller.pdf`.
+- `.env.example` documenta cada variable, incluido el uso de `host.docker.internal`.
+- `.gitignore`:
+  - Se verificó que excluye `.env`, `node_modules`, `dist`, `src/generated`, logs y el PDF, y que `prisma/migrations` y `package-lock.json` están versionados.
+  - Se agregó `.env.*` con `!.env.example`: un `.env.docker` no estaba ignorado.
+- `git log --all -- .env`: 0 commits. Ningún commit de ninguna rama contiene un `.env`.
+- README: instalación local, variables, migraciones, build y ejecución, y Docker (incluido el ajuste de `host.docker.internal` con `-e` sin modificar `.env`, y cómo comprobar que la imagen no contiene `.env`).
+- `docs/pruebas.md`: evidencia en las 18 filas locales.

@@ -2,7 +2,7 @@
 
 API backend para gestionar hábitos de bienestar de los participantes de Ritmo Claro, con autenticación JWT, permisos por rol y propiedad, y persistencia en PostgreSQL.
 
-> Estado: **Parte 8 — Swagger y pruebas manuales.** La API expone solo los ocho endpoints del contrato, con validación global, contrato de error uniforme, Helmet y documentación OpenAPI en `/docs`. El modelo está en [docs/modelo.md](docs/modelo.md), las variables de entorno en [.env.example](.env.example) y los resultados de las pruebas en [docs/pruebas.md](docs/pruebas.md). Las secciones de instalación, arquitectura, Docker y despliegue se agregan en las partes siguientes.
+> Estado: **Parte 9 — repositorio reproducible y Docker.** La API expone los ocho endpoints del contrato con validación, contrato de error uniforme, Helmet y Swagger en `/docs`, y se puede ejecutar en local o en un contenedor. El modelo está en [docs/modelo.md](docs/modelo.md), las variables en [.env.example](.env.example) y los resultados de las pruebas en [docs/pruebas.md](docs/pruebas.md). El despliegue público se agrega en la Parte 10.
 
 ## Problema, actores y valor del MVP
 
@@ -143,6 +143,84 @@ Los criterios usan usuario A, usuario B (ambos `USUARIO`) y un `ADMIN`. "Contrat
 - CA-ROL-04: sin token, `GET /habitos/admin/todos` → `401`.
 - CA-ROL-05: ninguna ruta de la API permite asignar o cambiar el rol; enviar `rol` en registro → `400`.
 - CA-ROL-06: un token emitido antes del cambio de rol conserva el rol anterior hasta que vence.
+
+## Instalación y ejecución local
+
+### Requisitos
+
+- Node.js 24 (LTS) y npm 11.
+- PostgreSQL con una base vacía para el proyecto (por ejemplo `ritmo_claro`).
+
+### Pasos
+
+```bash
+git clone https://github.com/Twenbe/ritmo_claro_api.git
+cd ritmo_claro_api
+npm ci                      # instala exactamente lo que fija package-lock.json
+cp .env.example .env        # luego reemplaza los valores ficticios de .env
+npx prisma migrate deploy   # crea las tablas aplicando prisma/migrations
+npx prisma generate         # genera el cliente en src/generated/prisma
+npm run start:dev           # API en http://localhost:<PORT>, Swagger en /docs
+```
+
+### Variables de entorno
+
+Se leen del entorno o de `.env` (que nunca se versiona). [.env.example](.env.example) es el contrato público, con valores ficticios y una explicación de cada variable.
+
+| Variable | Obligatoria | Uso |
+|----------|-------------|-----|
+| `DATABASE_URL` | Sí | Cadena de conexión a PostgreSQL que usan la app y Prisma. |
+| `JWT_SECRET` | Sí | Secreto para firmar y verificar los JWT. Largo, aleatorio y distinto en cada entorno. |
+| `PORT` | No (3000) | Puerto HTTP. En Render lo inyecta la plataforma. |
+
+La app no arranca si falta `DATABASE_URL` o `JWT_SECRET`, ni si la base no responde. El log nombra la variable o el código de error, nunca su valor.
+
+### Migraciones
+
+- `npx prisma migrate deploy`: aplica las migraciones pendientes de `prisma/migrations`. Es lo que se usa en un entorno nuevo, en el contenedor y en producción.
+- `npx prisma migrate dev --name <nombre>`: solo en desarrollo, cuando cambia `prisma/schema.prisma`. Crea una migración nueva, que se versiona en Git.
+- `npx prisma generate`: genera el cliente TypeScript. No toca la base; `npm run build` lo ejecuta automáticamente antes de compilar.
+
+### Build y ejecución en modo producción
+
+```bash
+npm run build        # prisma generate + nest build -> dist/
+npm run start:prod   # node dist/main
+```
+
+## Docker
+
+El [Dockerfile](Dockerfile) es multi-stage sobre `node:24-slim`:
+
+1. **build**: `npm ci`, `prisma generate` y `nest build`.
+2. **prod-deps**: `npm ci --omit=dev` (incluye el CLI de Prisma y su motor de migraciones).
+3. **final**: copia solo `node_modules` de producción, `dist/`, `prisma/`, `prisma.config.ts` y `package.json`, y se ejecuta con el usuario `node`.
+
+Al arrancar, el contenedor ejecuta `prisma migrate deploy` y luego `node dist/main.js`, que escucha en `0.0.0.0` y en el `PORT` del entorno. [.dockerignore](.dockerignore) excluye `.env` (y sus variantes), `.git`, `node_modules`, `dist`, `src/generated`, los logs y el PDF del taller, así que la imagen no contiene secretos: la configuración se pasa al ejecutar.
+
+```bash
+docker build -t ritmo-claro-api .
+```
+
+### Ejecutar contra un PostgreSQL instalado en tu computador
+
+Dentro del contenedor, `localhost` es el propio contenedor, no tu computador. Por eso la `DATABASE_URL` de tu `.env` (con `localhost`) no llega a tu PostgreSQL. Docker Desktop (Windows y macOS) ofrece el nombre `host.docker.internal`, que apunta a tu computador.
+
+No hace falta modificar `.env`: `-e` tiene prioridad sobre `--env-file`, así que basta con sobrescribir `DATABASE_URL` (con tu usuario y clave reales en lugar de los marcadores) y fijar el puerto para que coincida con `-p`:
+
+```bash
+docker run --rm -p 3000:3000 --env-file .env   -e PORT=3000   -e DATABASE_URL="postgresql://USUARIO_DB:CLAVE_DB@host.docker.internal:5432/ritmo_claro?schema=public"   ritmo-claro-api
+```
+
+- Si prefieres no escribir la clave en la terminal (queda en el historial), crea un `.env.docker` con la misma `DATABASE_URL` usando `host.docker.internal` y úsalo con `--env-file .env.docker`. `.gitignore` y `.dockerignore` ignoran cualquier `.env.*`.
+- En Linux sin Docker Desktop, agrega `--add-host=host.docker.internal:host-gateway`.
+- Si el contenedor no conecta (`ECONNREFUSED` o "no pg_hba.conf entry" en el log de arranque), revisa que PostgreSQL acepte conexiones de la red de Docker (`listen_addresses` en `postgresql.conf` y una regla en `pg_hba.conf`).
+
+Para comprobar que la imagen no contiene `.env`:
+
+```bash
+docker run --rm --entrypoint ls ritmo-claro-api -la /app   # no debe aparecer .env
+```
 
 ## Documentación interactiva (Swagger)
 
