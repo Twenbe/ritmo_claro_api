@@ -552,3 +552,54 @@ Commit al final.
 - `git log --all -- .env`: 0 commits. Ningún commit de ninguna rama contiene un `.env`.
 - README: instalación local, variables, migraciones, build y ejecución, y Docker (incluido el ajuste de `host.docker.internal` con `-e` sin modificar `.env`, y cómo comprobar que la imagen no contiene `.env`).
 - `docs/pruebas.md`: evidencia en las 18 filas locales.
+
+---
+
+## Parte 10 — Base en la nube, despliegue y prueba pública
+
+**Fecha:** 2026-10-08
+
+**Prompt:**
+
+```text
+Trabaja solo en Modulo_3/ritmo_claro_api: lee primero su CLAUDE.md y ejecuta todos los comandos dentro de esa carpeta.
+
+Parte 10 del taller, según CLAUDE.md y docs/taller.pdf.
+
+Tú no puedes crear las cuentas, así que guíame y espera mis confirmaciones:
+1. Dame una checklist breve para crear el proyecto PostgreSQL en Supabase y copiar la cadena del Session Pooler, y para crear en Render un Web Service con runtime Docker desde mi repositorio, con DATABASE_URL y un JWT_SECRET largo y distinto al local como variables privadas, sin fijar PORT.
+2. Dime qué líneas buscar en los logs de Render para confirmar instalación, generación, build, migraciones y arranque. Si te pego un error, diagnostica por capa.
+3. Cuando te dé la URL pública, ejecuta con curl el smoke test: /docs carga, registro, login, crear y listar un hábito, 401 sin token y 403 de un USUARIO en la ruta admin.
+4. Para el ADMIN en producción, dime cómo correr npm run admin:promover con la DATABASE_URL de Supabase solo en una variable temporal de mi terminal de PowerShell, sin escribirla en archivos ni en el chat. Luego prueba el 200 con ADMIN.
+5. Después de que yo haga un redeploy, comprueba que los datos persisten.
+6. Agrega a docs/pruebas.md las filas de entorno producción, y al README la URL pública, la URL de /docs, los pasos de prueba, las variables requeridas y una nota sobre el tiempo de activación del plan gratuito de Render.
+
+Commit al final.
+```
+
+(Durante la sesión el usuario confirmó: "Render dice 'Your service is live'. La URL pública es https://ritmo-claro-api.onrender.com"; "Listo, ya promoví smoke.admin en producción"; "Hice el redeploy cambiando DATABASE_URL (nueva contraseña de Supabase) y JWT_SECRET".)
+
+**Resumen de lo generado:**
+
+- Checklist de Supabase (Session Pooler, y por qué no la conexión directa: es IPv6 y Render no tiene salida IPv6) y de Render (runtime Docker, `DATABASE_URL` y `JWT_SECRET` privados, sin `PORT`), más una guía de las líneas de log por capa: instalación, generación, build, migraciones, conexión y arranque. El primer deploy no tuvo errores, así que no hizo falta diagnosticar.
+- Advertencia de seguridad: las cuentas de la colección de Postman tienen contraseñas públicas en el repositorio y no deben promoverse en producción.
+  - Para producción se usaron cuentas ficticias propias (`smoke.a`, `smoke.b` y `smoke.admin@ejemplo.com`), con contraseñas aleatorias generadas en la sesión.
+  - Esas contraseñas quedaron en un archivo temporal fuera del repositorio y nunca se mostraron.
+- Smoke test y matriz en producción con curl: 19 casos, todos "Cumple".
+  - `/docs` público con las 8 rutas y Helmet.
+  - Registro 201, duplicado 409, login 200 / 401, enum inválido 400, sin token 401.
+  - Crear 201, listar 200, PATCH parcial 200, inexistente 404.
+  - Propiedad 403 ×3, RBAC 403, eliminar 204 y luego 404.
+  - ADMIN 200 sin datos sensibles, después de que el usuario lo promovió.
+- Promoción de ADMIN en PowerShell: `Read-Host -AsSecureString` y `$env:DATABASE_URL` solo en la terminal, y luego `Remove-Item Env:DATABASE_URL`. `dotenv` no sobrescribe una variable existente, así que el script usa Supabase y no el `.env` local.
+- Persistencia tras un redeploy con nueva contraseña de Supabase y nuevo `JWT_SECRET`: login de nuevo → 200; el mismo hábito (id, nombre, estado `PAUSADO`) → 200; `smoke.admin` sigue ADMIN → 200 en la ruta admin.
+- Hallazgo durante la prueba: la descripción "Smoke test de producción" se había guardado con `U+FFFD` en lugar de la `ó`.
+  - **Causa:** `curl` en Git Bash para Windows envía los argumentos con la página de códigos de Windows, no en UTF-8. No es un problema de la API ni de la persistencia.
+  - **Verificación:** el mismo texto enviado con `fetch` de Node se guardó y se leyó sin cambios.
+  - Se corrigió la descripción con un PATCH de ese solo campo y se documentó en `docs/pruebas.md`.
+  - La IA había marcado al principio la fila de persistencia como "No cumple" sin revisar la causa; la revisó antes de registrarla.
+- `docs/pruebas.md`: descripción del entorno de producción, la nota sobre `curl` en Windows y 19 filas de producción (la columna de evidencia queda para las capturas).
+- README:
+  - URL pública y `/docs` al inicio.
+  - Sección "Producción": plataforma, nota del plan gratuito de Render (se suspende tras unos 15 minutos sin tráfico; la primera petición puede tardar alrededor de un minuto) y de la pausa de Supabase.
+  - Variables requeridas en Render, pasos para probar la API pública y cómo promover un ADMIN en producción.

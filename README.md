@@ -2,7 +2,9 @@
 
 API backend para gestionar hábitos de bienestar de los participantes de Ritmo Claro, con autenticación JWT, permisos por rol y propiedad, y persistencia en PostgreSQL.
 
-> Estado: **Parte 9 — repositorio reproducible y Docker.** La API expone los ocho endpoints del contrato con validación, contrato de error uniforme, Helmet y Swagger en `/docs`, y se puede ejecutar en local o en un contenedor. El modelo está en [docs/modelo.md](docs/modelo.md), las variables en [.env.example](.env.example) y los resultados de las pruebas en [docs/pruebas.md](docs/pruebas.md). El despliegue público se agrega en la Parte 10.
+> **API pública:** https://ritmo-claro-api.onrender.com · **Swagger:** https://ritmo-claro-api.onrender.com/docs
+>
+> Estado: **Parte 10 — desplegada en producción.** Render (imagen Docker) con PostgreSQL en Supabase. Los ocho endpoints del contrato tienen validación, contrato de error uniforme, Helmet y Swagger. El modelo está en [docs/modelo.md](docs/modelo.md), las variables en [.env.example](.env.example) y los resultados de las pruebas, local y producción, en [docs/pruebas.md](docs/pruebas.md).
 
 ## Problema, actores y valor del MVP
 
@@ -222,6 +224,54 @@ Para comprobar que la imagen no contiene `.env`:
 docker run --rm --entrypoint ls ritmo-claro-api -la /app   # no debe aparecer .env
 ```
 
+## Producción
+
+| | |
+|---|---|
+| URL pública | https://ritmo-claro-api.onrender.com |
+| Documentación | https://ritmo-claro-api.onrender.com/docs |
+| Plataforma | Render, Web Service con runtime Docker (este [Dockerfile](Dockerfile)), auto-deploy desde `main` |
+| Base de datos | PostgreSQL en Supabase, conectado por el **Session Pooler** |
+
+> **Plan gratuito de Render:** el servicio se suspende tras unos 15 minutos sin tráfico. La primera petición después de eso lo reactiva y puede tardar alrededor de un minuto en responder; las siguientes son inmediatas. Si `/docs` no carga al primer intento, espera y recarga.
+>
+> El proyecto gratuito de Supabase también puede pausarse tras un período largo sin actividad. Si la API responde 500 en todo lo que toca la base, revisa en Supabase que el proyecto esté activo.
+
+### Variables requeridas en Render
+
+Se configuran como variables privadas del servicio (*Environment*), nunca en el repositorio:
+
+| Variable | Valor |
+|----------|-------|
+| `DATABASE_URL` | Cadena del **Session Pooler** de Supabase (*Connect → Connection String → Session pooler*), con la contraseña de la base. No uses la conexión directa: solo funciona por IPv6 y Render no tiene salida IPv6. |
+| `JWT_SECRET` | Cadena larga y aleatoria, **distinta** a la local. Si cambia, los tokens anteriores dejan de ser válidos y hay que iniciar sesión de nuevo. |
+| `PORT` | **No se configura**: Render lo inyecta y la app escucha en `0.0.0.0:$PORT`. |
+
+En cada deploy el contenedor ejecuta `prisma migrate deploy` antes de arrancar. El log muestra `Applying migration …` la primera vez y `No pending migrations to apply.` en las siguientes.
+
+### Cómo probar la API pública
+
+1. Abre https://ritmo-claro-api.onrender.com/docs (la primera carga puede tardar por el plan gratuito).
+2. En **POST /auth/register**, crea una cuenta con datos ficticios. Luego, en **POST /auth/login**, copia el `access_token`.
+3. Pulsa **Authorize**, pega el token y prueba **POST /habitos** y **GET /habitos**.
+4. Sin autorizar, **GET /habitos** responde 401. Con una cuenta USUARIO, **GET /habitos/admin/todos** responde 403.
+5. Para la ruta administrativa, la cuenta debe promoverse con el script (abajo) y luego iniciar sesión de nuevo.
+6. Para la matriz completa, importa la colección de Postman, asigna `baseUrl` = `https://ritmo-claro-api.onrender.com` y ejecuta ambas carpetas. **No promuevas en producción las cuentas de la colección**: sus contraseñas son públicas en este repositorio.
+
+### Promover un ADMIN en producción
+
+El script usa la `DATABASE_URL` del entorno. Para apuntar a Supabase sin escribir la cadena en archivos ni en el historial, cárgala solo en la terminal actual (PowerShell):
+
+```powershell
+npm run build
+$s = Read-Host "Pega la DATABASE_URL de Supabase" -AsSecureString
+$env:DATABASE_URL = [Runtime.InteropServices.Marshal]::PtrToStringBSTR([Runtime.InteropServices.Marshal]::SecureStringToBSTR($s))
+npm run admin:promover -- persona@ejemplo.com
+Remove-Item Env:DATABASE_URL; Remove-Variable s
+```
+
+`dotenv` no sobrescribe una variable que ya existe, así que el script usa la cadena de Supabase y no la de tu `.env` local. La persona promovida debe volver a iniciar sesión.
+
 ## Documentación interactiva (Swagger)
 
 Con la API en marcha (`npm run start:dev`), abre `http://localhost:<PORT>/docs` (`PORT` sale de tu `.env`; por defecto 3000). El documento OpenAPI en JSON está en `/docs-json`.
@@ -250,7 +300,7 @@ La colección [`postman/Ritmo-Claro.postman_collection.json`](postman/Ritmo-Clar
    npm run admin:promover -- admin.soporte@ejemplo.com
    ```
 4. Ejecuta la carpeta **01 · Matriz de pruebas** con el *Collection Runner*, en orden. Al final, la última petición vacía los tokens y `habitoId`.
-5. Para el caso de producción, cambia `baseUrl` a la URL pública y repite ambas carpetas.
+5. Para el caso de producción, cambia `baseUrl` a `https://ritmo-claro-api.onrender.com` y repite ambas carpetas (ver [Producción](#producción)).
 
 Antes de exportar o compartir la colección, confirma que las variables de token están vacías. Los resultados observados en local están en [docs/pruebas.md](docs/pruebas.md).
 
@@ -266,7 +316,7 @@ npm run admin:promover -- persona@ejemplo.com
 - El email se normaliza (trim y minúsculas), igual que en el registro.
 - Si la cuenta no existe, el script termina con código 1. Si ya es ADMIN, no hace cambios.
 - **Después de promover, la persona debe volver a hacer login.** El rol viaja dentro del JWT: el token emitido antes del cambio conserva el rol `USUARIO` hasta que vence (1 h) y la ruta administrativa le sigue respondiendo `403`.
-- Para producción se ejecuta igual, con la `DATABASE_URL` de producción en el entorno de quien opera el script.
+- Para producción se ejecuta igual, con la `DATABASE_URL` de Supabase cargada solo en la terminal (ver [Promover un ADMIN en producción](#promover-un-admin-en-producción)).
 
 ## Decisiones
 
