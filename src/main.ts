@@ -1,6 +1,7 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -20,6 +21,24 @@ async function bootstrap() {
     }),
   );
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  const documento = SwaggerModule.createDocument(
+    app,
+    new DocumentBuilder()
+      .setTitle('Ritmo Claro API')
+      .setDescription(
+        'API de gestión de hábitos de bienestar. Registra una cuenta, inicia sesión y pega el access_token en Authorize para probar las rutas de /habitos. Todos los errores responden { statusCode, timestamp, path, message }.',
+      )
+      .setVersion('1.0.0')
+      .addTag('auth', 'Registro e inicio de sesión (rutas públicas)')
+      .addTag(
+        'habitos',
+        'Hábitos propios y listado administrativo (requiere JWT)',
+      )
+      .addBearerAuth()
+      .build(),
+  );
+  SwaggerModule.setup('docs', app, documento);
 
   const config = app.get(ConfigService);
   await app.listen(config.get<number>('PORT') ?? 3000);

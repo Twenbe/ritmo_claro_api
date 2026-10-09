@@ -406,3 +406,56 @@ PostgreSQL ya está encendido.
   - Con `JWT_SECRET` vacía sigue fallando con su mensaje.
   - Con la base real arranca normal, `GET /habitos` sin token → 401 y el login → 200.
 - Implicación para el despliegue: si la plataforma no alcanza la base, el fallo aparece en los logs de arranque y no en la primera petición.
+
+---
+
+## Parte 8 — Swagger, accesibilidad documental y pruebas manuales
+
+**Fecha:** 2026-10-08
+
+**Prompt:**
+
+```text
+Trabaja solo en Modulo_3/ritmo_claro_api: lee primero su CLAUDE.md y ejecuta todos los comandos dentro de esa carpeta.
+
+Parte 8 del taller, según CLAUDE.md y docs/taller.pdf.
+
+1. Elimina el controller y el service de la plantilla (GET /) y su test, para que la API exponga solo los ocho endpoints del contrato.
+2. Swagger en /docs con título "Ritmo Claro API", versión, descripción, tags auth y habitos, y autenticación Bearer. Verifica que /docs cargue con Helmet activo y ajusta la CSP si hace falta.
+3. Documenta en cada endpoint lo que recibe, lo que devuelve y sus códigos relevantes (201/200/204, 400, 401, 403, 404, 409). Crea un DTO de respuesta de error con el contrato y úsalo en las respuestas de error. Los enums deben aparecer como enums.
+4. Verifica que los nombres de campos, enums y rutas de Swagger coincidan exactamente con la implementación y dime cómo lo comprobaste.
+5. Crea postman/Ritmo-Claro.postman_collection.json (v2.1) con las variables baseUrl, tokenA, tokenB, tokenAdmin y habitoId vacías, scripts que guarden los tokens tras el login, y una petición por cada caso de la matriz de la página 16, nombrada con el status esperado. Usa solo datos ficticios.
+6. Crea docs/pruebas.md con una tabla de columnas caso, entorno, fecha, entrada resumida, status esperado, status observado, resultado y evidencia. Ejecuta la matriz en local con curl y llena las filas con lo observado. La columna de evidencia queda para mis capturas.
+7. Agrega al README cómo abrir Swagger, cómo usar Authorize y cómo ejecutar la colección.
+
+Commit al final.
+```
+
+**Resumen de lo generado:**
+
+- Plantilla eliminada: `app.controller`, `app.service`, su spec, el test e2e (solo probaba `GET /`), `jest-e2e.json` y el script `test:e2e`. El script `test` pasa a `jest --passWithNoTests` para que `npm test` no falle sin tests.
+- Swagger en `/docs` (`main.ts`): título "Ritmo Claro API", versión 1.0.0, descripción, tags `auth` y `habitos`, y esquema Bearer.
+  - **CSP:** no hizo falta ajustarla. Swagger UI de `@nestjs/swagger` 11 carga sus scripts como archivos propios (`'self'`) y el documento va embebido en `swagger-ui-init.js`.
+  - Se comprobó renderizando `/docs` con Chrome headless (perfil temporal): título, versión, los 2 tags, las 8 operaciones y el botón Authorize.
+- DTO de respuesta, solo para documentación:
+  - `ErrorRespuestaDto` (contrato de error, con `message` como texto o lista);
+  - `UsuarioRespuestaDto`, `TokenRespuestaDto`;
+  - `HabitoRespuestaDto`, `UsuarioResumenDto` y `HabitoAdminRespuestaDto`.
+- `@ApiProperty` en los DTO de entrada, con los enums como componentes con nombre (`Rol`, `EstadoHabito`, `Frecuencia`).
+- Controllers con `@ApiOperation`, `@ApiParam` (uuid), `@ApiBearerAuth`, y respuestas 201/200/204, 400, 401, 403, 404 y 409 según cada operación.
+- Corrección detectada en la verificación: `PartialType` copiaba el `default: ACTIVO/DIARIA` a `ActualizarHabitoDto`, lo que sugería que un PATCH sin `estado` lo devuelve a `ACTIVO`. Se reemplazó por una descripción del valor inicial.
+- Verificación Swagger vs implementación con un script temporal fuera del repositorio:
+  1. rutas y métodos de `/docs-json` = rutas registradas por Nest (8);
+  2. enums de Swagger = enums del cliente Prisma;
+  3. cada campo documentado se acepta y uno extra se rechaza con 400;
+  4. las claves de las respuestas reales = propiedades de los esquemas (incluido el contrato de error);
+  5. cada status observado está documentado en su operación.
+
+  Resultado: todo coincide.
+- `postman/Ritmo-Claro.postman_collection.json` (v2.1):
+  - variables vacías;
+  - carpeta de preparación (A, B y ADMIN ficticios) y 18 peticiones de la matriz nombradas con el status esperado;
+  - tests de status y contrato; los tokens se guardan tras el login y se vacían al final.
+  - Se ejecutó con Newman vía `npx` (sin agregarlo al proyecto): 23 peticiones, 48 aserciones, 0 fallos.
+- `docs/pruebas.md`: matriz ejecutada con curl en local, 18 filas "Cumple" y la fila de producción pendiente para la Parte 10. La columna de evidencia queda vacía para las capturas.
+- README: secciones de Swagger, Authorize y la colección de Postman.

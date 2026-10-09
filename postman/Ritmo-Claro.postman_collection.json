@@ -1,0 +1,1140 @@
+{
+  "info": {
+    "_postman_id": "6b1f3c2e-8a4d-4e7b-9c1a-2f5d8e9a0b3c",
+    "name": "Ritmo Claro API",
+    "description": "Matriz de pruebas manuales del taller Ritmo Claro API (página 16). Solo datos ficticios.\n\n1. Asigna la variable de colección `baseUrl` (por ejemplo `http://localhost:3000` o la URL pública de producción, sin barra final).\n2. Ejecuta la carpeta \"00 · Preparación\". La primera vez, promueve la cuenta ADMIN con `npm run build` y `npm run admin:promover -- admin.soporte@ejemplo.com`, y repite \"Login ADMIN\".\n3. Ejecuta la carpeta \"01 · Matriz de pruebas\" en orden con el Collection Runner. Los tokens y `habitoId` se guardan solos y se vacían al terminar.\n\nCaso \"Producción\": cambia `baseUrl` a la URL pública y repite ambas carpetas; el contrato debe ser el mismo que en local.\nAntes de exportar o compartir la colección, confirma que tokenA, tokenB, tokenAdmin y habitoId están vacíos.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "00 · Preparación",
+      "description": "Crea las cuentas ficticias A, B y ADMIN (201 la primera vez, 409 las siguientes) y guarda los tokens de B y ADMIN. La cuenta ADMIN se promueve fuera de la API: después del primer registro ejecuta `npm run build` y `npm run admin:promover -- admin.soporte@ejemplo.com`, y vuelve a ejecutar \"Login ADMIN\".",
+      "item": [
+        {
+          "name": "Registrar usuario A · 201 o 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 (nueva) o 409 (ya existía)', () => pm.expect([201, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Usuario A\",\n  \"email\": \"usuario.a@ejemplo.com\",\n  \"password\": \"ClaveDePrueba-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar usuario B · 201 o 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 (nueva) o 409 (ya existía)', () => pm.expect([201, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Usuario B\",\n  \"email\": \"usuario.b@ejemplo.com\",\n  \"password\": \"ClaveDePrueba-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Registrar ADMIN · 201 o 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 (nueva) o 409 (ya existía)', () => pm.expect([201, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Admin Soporte\",\n  \"email\": \"admin.soporte@ejemplo.com\",\n  \"password\": \"ClaveDePrueba-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Nace como USUARIO. Promuévelo con: npm run admin:promover -- admin.soporte@ejemplo.com"
+          }
+        },
+        {
+          "name": "Login usuario B · 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Entrega access_token', () => pm.expect(pm.response.json().access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set('tokenB', pm.response.json().access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"usuario.b@ejemplo.com\",\n  \"password\": \"ClaveDePrueba-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Login ADMIN · 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Entrega access_token', () => pm.expect(pm.response.json().access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set('tokenAdmin', pm.response.json().access_token);",
+                  "const payload = JSON.parse(atob(pm.response.json().access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));",
+                  "pm.test('El token tiene rol ADMIN (si falla: ejecuta admin:promover y repite este login)', () => pm.expect(payload.rol).to.eql('ADMIN'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin.soporte@ejemplo.com\",\n  \"password\": \"ClaveDePrueba-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 · Matriz de pruebas (página 16)",
+      "description": "Un caso por petición, en orden. El nombre indica el status esperado.",
+      "item": [
+        {
+          "name": "01 Registro válido · 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Rol USUARIO y sin passwordHash', () => {",
+                  "  const u = pm.response.json();",
+                  "  pm.expect(u.rol).to.eql('USUARIO');",
+                  "  pm.expect(u).to.not.have.property('passwordHash');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Visitante Postman\",\n  \"email\": \"visitante.{{$timestamp}}@ejemplo.com\",\n  \"password\": \"ClaveDePrueba-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "02 Email repetido · 409",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Contrato de error: statusCode, timestamp, path y message', () => {",
+                  "  const cuerpo = pm.response.json();",
+                  "  pm.expect(Object.keys(cuerpo)).to.eql(['statusCode', 'timestamp', 'path', 'message']);",
+                  "  pm.expect(cuerpo.statusCode).to.eql(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Usuario A\",\n  \"email\": \"usuario.a@ejemplo.com\",\n  \"password\": \"ClaveDePrueba-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "03 Login válido · 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Entrega access_token', () => pm.expect(pm.response.json().access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set('tokenA', pm.response.json().access_token);",
+                  "const payload = JSON.parse(atob(pm.response.json().access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));",
+                  "pm.test('JWT con sub, email, rol y expiración de 1 hora', () => {",
+                  "  pm.expect(payload).to.include.keys('sub', 'email', 'rol', 'iat', 'exp');",
+                  "  pm.expect(payload.exp - payload.iat).to.eql(3600);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"usuario.a@ejemplo.com\",\n  \"password\": \"ClaveDePrueba-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "04 Login inválido · 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Contrato de error: statusCode, timestamp, path y message', () => {",
+                  "  const cuerpo = pm.response.json();",
+                  "  pm.expect(Object.keys(cuerpo)).to.eql(['statusCode', 'timestamp', 'path', 'message']);",
+                  "  pm.expect(cuerpo.statusCode).to.eql(pm.response.code);",
+                  "});",
+                  "pm.test('Mensaje genérico', () => pm.expect(pm.response.json().message).to.eql('Credenciales inválidas'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"usuario.a@ejemplo.com\",\n  \"password\": \"incorrecta-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "05a Entrada inválida (nombre corto) · 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Contrato de error: statusCode, timestamp, path y message', () => {",
+                  "  const cuerpo = pm.response.json();",
+                  "  pm.expect(Object.keys(cuerpo)).to.eql(['statusCode', 'timestamp', 'path', 'message']);",
+                  "  pm.expect(cuerpo.statusCode).to.eql(pm.response.code);",
+                  "});",
+                  "pm.test('Mensaje comprensible', () => pm.expect(pm.response.json().message).to.include('El nombre debe tener al menos 2 caracteres'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "register"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"A\",\n  \"email\": \"nombre.corto@ejemplo.com\",\n  \"password\": \"ClaveDePrueba-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "05b Entrada inválida (enum inexistente) · 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Contrato de error: statusCode, timestamp, path y message', () => {",
+                  "  const cuerpo = pm.response.json();",
+                  "  pm.expect(Object.keys(cuerpo)).to.eql(['statusCode', 'timestamp', 'path', 'message']);",
+                  "  pm.expect(cuerpo.statusCode).to.eql(pm.response.code);",
+                  "});",
+                  "pm.test('Indica los valores válidos', () => pm.expect(pm.response.json().message.join(' ')).to.include('DIARIA, SEMANAL, MENSUAL'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/habitos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "habitos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Correr\",\n  \"frecuencia\": \"ANUAL\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "06 Sin autenticación · 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Contrato de error: statusCode, timestamp, path y message', () => {",
+                  "  const cuerpo = pm.response.json();",
+                  "  pm.expect(Object.keys(cuerpo)).to.eql(['statusCode', 'timestamp', 'path', 'message']);",
+                  "  pm.expect(cuerpo.statusCode).to.eql(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/habitos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "habitos"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "07a Crear hábito (A) · 201",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const h = pm.response.json();",
+                  "pm.collectionVariables.set('habitoId', h.id);",
+                  "pm.test('Valores iniciales ACTIVO y DIARIA', () => { pm.expect(h.estado).to.eql('ACTIVO'); pm.expect(h.frecuencia).to.eql('DIARIA'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/habitos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "habitos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Leer 20 minutos\",\n  \"descripcion\": \"Antes de dormir\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "07b Listar hábitos propios (A) · 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Incluye el hábito creado', () => pm.expect(pm.response.json().map((h) => h.id)).to.include(pm.collectionVariables.get('habitoId')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/habitos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "habitos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "08 Actualización parcial (A) · 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cambia solo estado; los demás campos se conservan', () => {",
+                  "  const h = pm.response.json();",
+                  "  pm.expect(h.estado).to.eql('PAUSADO');",
+                  "  pm.expect(h.nombre).to.eql('Leer 20 minutos');",
+                  "  pm.expect(h.descripcion).to.eql('Antes de dormir');",
+                  "  pm.expect(h.frecuencia).to.eql('DIARIA');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/habitos/{{habitoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "habitos",
+                "{{habitoId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"PAUSADO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "09 Recurso inexistente · 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Contrato de error: statusCode, timestamp, path y message', () => {",
+                  "  const cuerpo = pm.response.json();",
+                  "  pm.expect(Object.keys(cuerpo)).to.eql(['statusCode', 'timestamp', 'path', 'message']);",
+                  "  pm.expect(cuerpo.statusCode).to.eql(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/habitos/3f1c2a9e-1b2c-4d3e-8f40-5a6b7c8d9e0f",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "habitos",
+                "3f1c2a9e-1b2c-4d3e-8f40-5a6b7c8d9e0f"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "10a Propiedad: B ve el hábito de A · 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Contrato de error: statusCode, timestamp, path y message', () => {",
+                  "  const cuerpo = pm.response.json();",
+                  "  pm.expect(Object.keys(cuerpo)).to.eql(['statusCode', 'timestamp', 'path', 'message']);",
+                  "  pm.expect(cuerpo.statusCode).to.eql(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/habitos/{{habitoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "habitos",
+                "{{habitoId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenB}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "10b Propiedad: B edita el hábito de A · 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Contrato de error: statusCode, timestamp, path y message', () => {",
+                  "  const cuerpo = pm.response.json();",
+                  "  pm.expect(Object.keys(cuerpo)).to.eql(['statusCode', 'timestamp', 'path', 'message']);",
+                  "  pm.expect(cuerpo.statusCode).to.eql(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/habitos/{{habitoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "habitos",
+                "{{habitoId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenB}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"ARCHIVADO\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "10c Propiedad: B borra el hábito de A · 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Contrato de error: statusCode, timestamp, path y message', () => {",
+                  "  const cuerpo = pm.response.json();",
+                  "  pm.expect(Object.keys(cuerpo)).to.eql(['statusCode', 'timestamp', 'path', 'message']);",
+                  "  pm.expect(cuerpo.statusCode).to.eql(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/habitos/{{habitoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "habitos",
+                "{{habitoId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenB}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "11 RBAC: USUARIO llama la ruta admin · 403",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Contrato de error: statusCode, timestamp, path y message', () => {",
+                  "  const cuerpo = pm.response.json();",
+                  "  pm.expect(Object.keys(cuerpo)).to.eql(['statusCode', 'timestamp', 'path', 'message']);",
+                  "  pm.expect(cuerpo.statusCode).to.eql(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/habitos/admin/todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "habitos",
+                "admin",
+                "todos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "12 Ruta administrativa: ADMIN · 200",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Sin datos sensibles: ni passwordHash ni email; dueño solo con id y nombre', () => {",
+                  "  const texto = pm.response.text();",
+                  "  pm.expect(texto).to.not.include('passwordHash');",
+                  "  pm.expect(texto).to.not.include('\"email\"');",
+                  "  pm.response.json().forEach((h) => pm.expect(Object.keys(h.usuario)).to.eql(['id', 'nombre']));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/habitos/admin/todos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "habitos",
+                "admin",
+                "todos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "13a Eliminación: A borra su hábito · 204",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 204', () => pm.response.to.have.status(204));",
+                  "pm.test('Sin cuerpo', () => pm.expect(pm.response.text()).to.eql(''));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/habitos/{{habitoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "habitos",
+                "{{habitoId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "13b Eliminación: consulta posterior · 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Contrato de error: statusCode, timestamp, path y message', () => {",
+                  "  const cuerpo = pm.response.json();",
+                  "  pm.expect(Object.keys(cuerpo)).to.eql(['statusCode', 'timestamp', 'path', 'message']);",
+                  "  pm.expect(cuerpo.statusCode).to.eql(pm.response.code);",
+                  "});",
+                  "// Fin de la matriz: se vacían los tokens para no exportarlos por error.",
+                  "['tokenA', 'tokenB', 'tokenAdmin', 'habitoId'].forEach((v) => pm.collectionVariables.set(v, ''));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/habitos/{{habitoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "habitos",
+                "{{habitoId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenA}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tokenA",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tokenB",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tokenAdmin",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "habitoId",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 API backend para gestionar hábitos de bienestar de los participantes de Ritmo Claro, con autenticación JWT, permisos por rol y propiedad, y persistencia en PostgreSQL.
 
-> Estado: **Parte 7 — validación, errores y seguridad básica.** Registro, login, CRUD de `/habitos` con propiedad (403), ruta administrativa solo para ADMIN, validación global de entradas, contrato de error uniforme y Helmet. El modelo está en [docs/modelo.md](docs/modelo.md) y las variables de entorno en [.env.example](.env.example). Las secciones de instalación, arquitectura, Docker y despliegue se agregan en las partes siguientes.
+> Estado: **Parte 8 — Swagger y pruebas manuales.** La API expone solo los ocho endpoints del contrato, con validación global, contrato de error uniforme, Helmet y documentación OpenAPI en `/docs`. El modelo está en [docs/modelo.md](docs/modelo.md), las variables de entorno en [.env.example](.env.example) y los resultados de las pruebas en [docs/pruebas.md](docs/pruebas.md). Las secciones de instalación, arquitectura, Docker y despliegue se agregan en las partes siguientes.
 
 ## Problema, actores y valor del MVP
 
@@ -143,6 +143,38 @@ Los criterios usan usuario A, usuario B (ambos `USUARIO`) y un `ADMIN`. "Contrat
 - CA-ROL-04: sin token, `GET /habitos/admin/todos` → `401`.
 - CA-ROL-05: ninguna ruta de la API permite asignar o cambiar el rol; enviar `rol` en registro → `400`.
 - CA-ROL-06: un token emitido antes del cambio de rol conserva el rol anterior hasta que vence.
+
+## Documentación interactiva (Swagger)
+
+Con la API en marcha (`npm run start:dev`), abre `http://localhost:<PORT>/docs` (`PORT` sale de tu `.env`; por defecto 3000). El documento OpenAPI en JSON está en `/docs-json`.
+
+- Las operaciones están agrupadas en **auth** (rutas públicas) y **habitos** (requieren JWT, con candado).
+- Cada operación muestra el body que recibe, el esquema de su respuesta y sus códigos (201/200/204, 400, 401, 403, 404, 409). Todos los errores usan el esquema `ErrorRespuestaDto`: `{ statusCode, timestamp, path, message }`.
+- `Rol`, `EstadoHabito` y `Frecuencia` aparecen como enums, con sus valores exactos.
+
+### Probar rutas protegidas con Authorize
+
+1. En **auth → POST /auth/register**, pulsa *Try it out* y crea una cuenta con datos ficticios (o usa una existente).
+2. En **POST /auth/login**, envía email y password y copia el valor de `access_token` (sin comillas).
+3. Pulsa **Authorize** (arriba a la derecha), pega el token en *Value* (sin escribir "Bearer") y confirma. Los candados se cierran.
+4. Ejecuta las rutas de **habitos**. El token dura 1 hora; cuando venza, repite el login y vuelve a autorizar.
+5. Para la ruta `GET /habitos/admin/todos` necesitas el token de una cuenta ADMIN (ver [Asignar el rol ADMIN](#asignar-el-rol-admin)), obtenido **después** de promoverla.
+
+## Pruebas manuales con Postman
+
+La colección [`postman/Ritmo-Claro.postman_collection.json`](postman/Ritmo-Claro.postman_collection.json) (formato v2.1) tiene una petición por cada caso de la matriz de la página 16 del taller, nombrada con el status esperado, y tests que comprueban el status y el contrato de error. Usa solo cuentas ficticias: `usuario.a@ejemplo.com`, `usuario.b@ejemplo.com` y `admin.soporte@ejemplo.com`.
+
+1. En Postman: **Import** → selecciona el archivo de la colección.
+2. En la colección, pestaña **Variables**, asigna `baseUrl` (por ejemplo `http://localhost:3000`, sin barra final). Deja vacías `tokenA`, `tokenB`, `tokenAdmin` y `habitoId`: los scripts de login y de creación las llenan solos.
+3. Ejecuta la carpeta **00 · Preparación**. La primera vez, promueve la cuenta ADMIN y repite *Login ADMIN*:
+   ```bash
+   npm run build
+   npm run admin:promover -- admin.soporte@ejemplo.com
+   ```
+4. Ejecuta la carpeta **01 · Matriz de pruebas** con el *Collection Runner*, en orden. Al final, la última petición vacía los tokens y `habitoId`.
+5. Para el caso de producción, cambia `baseUrl` a la URL pública y repite ambas carpetas.
+
+Antes de exportar o compartir la colección, confirma que las variables de token están vacías. Los resultados observados en local están en [docs/pruebas.md](docs/pruebas.md).
 
 ## Asignar el rol ADMIN
 
