@@ -158,7 +158,8 @@ Commit al final.
 - `prisma/schema.prisma` con los enums `Rol`, `EstadoHabito` y `Frecuencia` y los modelos `Usuario` (`@@map("usuarios")`) y `Habito` (`@@map("habitos")`): ids UUID, `email` único, `VarChar(120)` y `VarChar(500)`, valores iniciales `USUARIO`, `ACTIVO` y `DIARIA`, FK `usuarioId` con `onDelete: Cascade` e índice por `usuarioId`.
 - Migración `20261008201005_modelo_inicial` aplicada en la base local `ritmo_claro`, y cliente generado.
 - `.env.example` con valores ficticios. `.env` no se leyó ni se modificó: solo se comprobó que define las tres variables y se comparó su hash antes y después.
-- `PrismaService` extiende `PrismaClient` con el adapter `PrismaPg`. Toma la URL con `ConfigService.getOrThrow('DATABASE_URL')`, conecta en `onModuleInit` y desconecta en `onModuleDestroy`; `main.ts` llama a `app.enableShutdownHooks()` para que la desconexión también ocurra con SIGTERM o Ctrl+C.
+- `PrismaService` extiende `PrismaClient` con el adapter `PrismaPg`. Toma la URL con `ConfigService.getOrThrow('DATABASE_URL')`, llama a `$connect()` en `onModuleInit` y desconecta en `onModuleDestroy`; `main.ts` llama a `app.enableShutdownHooks()` para que la desconexión también ocurra con SIGTERM o Ctrl+C.
+  - **Corrección posterior:** con `PrismaPg`, `$connect()` no abre una conexión real, así que en esta versión la app arrancaba aunque la base no respondiera. Ver la entrada "Corrección — verificación de la base al arrancar".
 - `.gitignore` ignora `/src/generated` y `eslint.config.mjs` lo excluye del lint (el código generado no se edita a mano); el script `prebuild` (`prisma generate`) regenera el cliente en cada `npm run build`.
 - Corrección necesaria: `prisma.config.ts` se excluyó en `tsconfig.build.json`. Si no, `tsc` lo compilaba y movía la salida a `dist/src/main.js`, y `start:prod` (`node dist/main`) dejaba de funcionar.
 - `docs/modelo.md` con un diagrama Mermaid (PK, FK, UK) y una tabla de claves y restricciones.
@@ -377,3 +378,31 @@ Commit al final.
 - Revisión de 23 respuestas de error: sin stack, sin `passwordHash`, sin los nombres ni los valores reales de `JWT_SECRET` y `DATABASE_URL` (comparados sin imprimirlos), y todas con exactamente las 4 claves del contrato.
 - 500 con PostgreSQL detenido: la respuesta es genérica y el log conserva la ruta, el tipo, el código `ECONNREFUSED`, la consulta y el stack.
 - Hallazgo: con `PrismaPg`, `$connect()` no abre una conexión real, así que la app arranca aunque la base esté caída. Esto corrige lo explicado en la Parte 3.
+
+---
+
+## Corrección — verificación de la base al arrancar
+
+**Fecha:** 2026-10-08
+
+**Prompt:**
+
+```text
+PostgreSQL ya está encendido.
+1. Antes de borrar usuarios de prueba, muéstrame sus emails exactos. No borres ana@ejemplo.com, beto@ejemplo.com ni carla@ejemplo.com: son mis usuarios de Postman.
+2. Sí, agrega el SELECT 1 en onModuleInit para que la app falle al arrancar si la base no responde. Hazlo en un commit aparte, corrige lo que dice la documentación de la Parte 3 sobre ese comportamiento y registra en docs/uso-ia.md que la afirmación anterior era incorrecta y cómo se detectó.
+```
+
+**Afirmación incorrecta de la IA.** Al explicar la Parte 3 (pregunta 16 de la sustentación), la IA afirmó que `getOrThrow` y `$connect()` en `onModuleInit` hacían que la app fallara al arrancar si la base no respondía. Solo la primera parte era cierta: `getOrThrow` detiene el arranque si falta `DATABASE_URL`. Con el driver adapter `PrismaPg`, `$connect()` no abre una conexión real; el pool de `pg` conecta en la primera consulta. La entrada de la Parte 3 de este archivo decía "conecta en `onModuleInit`", y ya se corrigió.
+
+**Cómo se detectó.** En la prueba del 500 de la Parte 7, PostgreSQL estaba detenido y hubo que reiniciar la API después de un cambio en el filtro. La app arrancó con "Nest application successfully started" y el error recién apareció en la primera petición (`ECONNREFUSED`). Eso contradecía lo explicado en la Parte 3.
+
+**Resumen de lo generado:**
+
+- `PrismaService.onModuleInit` ejecuta ``$queryRaw`SELECT 1` `` después de `$connect()`. Si falla, registra con `Logger` "No se pudo conectar a la base de datos al arrancar [CÓDIGO]" y relanza el error.
+- `main.ts` reemplaza `void bootstrap()` por `bootstrap().catch(...)`, que registra "La aplicación no pudo arrancar" y termina con código 1. Sin esto, el rechazo llegaba sin manejar y Node imprimía una línea minificada del runtime de Prisma.
+- Verificación:
+  - Con una `DATABASE_URL` ficticia hacia un puerto cerrado (solo en el entorno del proceso), la app no arranca: código 1 y log con `[ECONNREFUSED]`, sin la URL ni la clave.
+  - Con `JWT_SECRET` vacía sigue fallando con su mensaje.
+  - Con la base real arranca normal, `GET /habitos` sin token → 401 y el login → 200.
+- Implicación para el despliegue: si la plataforma no alcanza la base, el fallo aparece en los logs de arranque y no en la primera petición.

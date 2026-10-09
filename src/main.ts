@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
@@ -24,4 +24,13 @@ async function bootstrap() {
   const config = app.get(ConfigService);
   await app.listen(config.get<number>('PORT') ?? 3000);
 }
-void bootstrap();
+
+// Un fallo al arrancar (por ejemplo, base inalcanzable) termina el proceso
+// con código 1 y un log legible, sin imprimir la cadena de conexión.
+bootstrap().catch((error: unknown) => {
+  new Logger('Bootstrap').error(
+    'La aplicación no pudo arrancar',
+    error instanceof Error ? error.stack : String(error),
+  );
+  process.exit(1);
+});
